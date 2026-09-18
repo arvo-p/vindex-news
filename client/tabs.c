@@ -80,6 +80,16 @@ void tabs_close(tab * target){
 		if(target == selected_tab) selected_tab = tabs[tabIndex];	
 	}
 
+	if (target->tab_mode == TAB_GROUP && target->category && strncmp(target->category->name, "Favs:", 5) == 0) {
+		g_member * mem = target->category->first_member;
+		while (mem) {
+			g_member * next = mem->next;
+			free(mem);
+			mem = next;
+		}
+		free(target->category);
+	}
+
 	free(target->working);
 	free(target->offset);
 	free(target->old_entry);
@@ -122,6 +132,13 @@ void tabs_switchPrevious(tab * target){
 void tabs_openGroup(cat_group * requestedGroup){
 	g_member * firstMember = requestedGroup->first_member;
 	
+	if(firstMember == NULL){
+		sprintf(statusbar_notify, "Group %s is empty!", requestedGroup->name);
+		draw_statusbar();
+		ui_flush();
+		return;
+	}
+
 	if(tabs_checkExist(requestedGroup->name)) return;
 	selected_tab = tabs_newtab(requestedGroup->name, firstMember->entry, TAB_GROUP);
 	selected_tab->offset->group_member = firstMember;

@@ -179,6 +179,7 @@ int feed::Parse(string &buffer, rss_url &rssUrl){
 	try{
    		doc.parse<0>(parsed);
 	}catch(const exception& e){
+		cout << "Parsing failed. Buffer size: " << buffer.length() << " Content: " << buffer.substr(0, min((int)buffer.length(), 200)) << endl;
 		feed::ParsePrintStatus(rssUrl, FAILED, 0);
 		return 1;
 	}
@@ -410,19 +411,31 @@ int feed::Fetch(rss_url &rssUrl){
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYSTATUS, 0);
-	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/4.0");
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
    	curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
 	curl_easy_setopt(curl, CURLOPT_CAINFO, "../server/cacert.pem");
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteData);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 	
+	struct curl_slist *headers = NULL;
+	headers = curl_slist_append(headers, "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+	headers = curl_slist_append(headers, "Accept-Language: en-US,en;q=0.9");
+	headers = curl_slist_append(headers, "Upgrade-Insecure-Requests: 1");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+#ifdef CURL_HTTP_VERSION_2_0
+	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+#endif
+
 	res = curl_easy_perform(curl);
  	if(res != CURLE_OK){
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		curl_slist_free_all(headers);
 		return 1;
 	}
 	rssManager->Parse(readBuffer, rssUrl);
     curl_easy_cleanup(curl);
+	curl_slist_free_all(headers);
 	return 0;
 }

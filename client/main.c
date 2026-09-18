@@ -25,6 +25,7 @@ entry_parent * initial_parent = NULL;
 
 int winSZ[4] = {0,0,0,0};
 int display_mode = 1;
+int server_is_running = 0;
 
 int entry_view(entry * entry);
 
@@ -52,6 +53,7 @@ void * server_thread(void * arg){
 	Load->ReloadEntries();
 	strncpy(statusbar_notify, "Refresh complete.", 255);
 	draw_update(true);
+	server_is_running = 0;
 	return NULL;
 }
 
@@ -183,7 +185,8 @@ int main(int argc, char * argv[]){
 				}else g_pressed = 1;
 				break;
 			case 'r':
-				{
+				if (!server_is_running) {
+					server_is_running = 1;
 					pthread_t tServer;
 					pthread_create(&tServer, NULL, &server_thread, NULL);
 					pthread_detach(tServer);
@@ -195,6 +198,76 @@ int main(int argc, char * argv[]){
 			case 13:
 				if (selected_tab->tab_mode != TAB_WEBFEEDS){
 					entry_view(selected_tab->old_entry->entry);
+				}
+				break;
+			case 'f':
+				if (selected_tab->tab_mode != TAB_WEBFEEDS && selected_tab->old_entry->entry) {
+					selected_tab->old_entry->entry->bookmarked = !selected_tab->old_entry->entry->bookmarked;
+					Load->UpdateInteractionInformation(selected_tab->old_entry->entry);
+					redraw = true;
+				}
+				break;
+			case 'F':
+				if (selected_tab->tab_mode != TAB_WEBFEEDS && strncmp(selected_tab->title, "Favs:", 5) != 0) {
+					cat_group * fav_group = calloc(1, sizeof(cat_group));
+					snprintf(fav_group->name, sizeof(fav_group->name), "Favs: %.13s", selected_tab->title);
+					
+					global_e iter;
+					iter.entry = NULL; iter.child = NULL; iter.parent = NULL; iter.group_member = NULL;
+					
+					// Setup iterator start
+					if (selected_tab->tab_mode == TAB_SIMPLE) {
+						setGlobalEntry(&iter, initial_entry);
+					} else if (selected_tab->tab_mode == TAB_GROUP) {
+						if(selected_tab->category && selected_tab->category->first_member){
+							iter.group_member = selected_tab->category->first_member;
+							setGlobalEntry(&iter, selected_tab->category->first_member->entry);
+						}
+					} else if (selected_tab->tab_mode == TAB_URLBASE) {
+						if(selected_tab->offset->parent && selected_tab->offset->parent->first_child){
+							child_entry * first = (child_entry *)selected_tab->offset->parent->first_child;
+							iter.child = first;
+							setGlobalEntry(&iter, first->entry);
+						}
+					}
+
+					g_member * last_member = NULL;
+					while (iter.entry != NULL) {
+						if (iter.entry->bookmarked) {
+							g_member * new_mem = calloc(1, sizeof(g_member));
+							new_mem->entry = iter.entry;
+							if (!fav_group->first_member) {
+								fav_group->first_member = new_mem;
+							} else {
+								last_member->next = new_mem;
+								new_mem->previous = last_member;
+							}
+							last_member = new_mem;
+							fav_group->count++;
+						}
+						
+						if (selected_tab->tab_mode == TAB_GROUP) {
+							g_member * nxt = getNextGroupEntry(iter.group_member, 0);
+							if (!nxt) break;
+							iter.entry = nxt->entry;
+							iter.group_member = nxt;
+						} else {
+							if (setGlobalEntry(&iter, getNextEntry(&iter, 0))) break;
+						}
+					}
+					
+					if (fav_group->count > 0) {
+						tab * ntab = tabs_newtab(fav_group->name, fav_group->first_member->entry, TAB_GROUP);
+						ntab->category = fav_group;
+						ntab->offset->group_member = fav_group->first_member;
+						selected_tab = ntab;
+						tabs_updateDisplayMode(selected_tab);
+						redraw = true;
+					} else {
+						free(fav_group);
+						strncpy(statusbar_notify, "No favorites found in this view.", 255);
+						draw_statusbar();
+					}
 				}
 				break;
 			case 'j':

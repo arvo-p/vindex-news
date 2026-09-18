@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+     xmlns:admin="http://webns.net/mvcb/"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/">
+
+    <channel>
+
+        <title><![CDATA[All About Circuits ]]></title>
+        <link>https:///technical-articles//</link>
+        <description><![CDATA[Electronics and Electrical Engineering News, Projects & Technical Articles.]]></description>
+        <dc:language>en</dc:language>
+        <dc:creator>webmaster@allaboutcircuits.com</dc:creator>
+        <dc:rights>Copyright 2026</dc:rights>
+        <dc:date>2026-09-05T07:00:00+00:00</dc:date>
+            
+            <item>
+                <title><![CDATA[Evaluating SNR Performance of FMFB Demodulators at High CNR]]></title>
+                <link>https://www.allaboutcircuits.com/technical-articles/evaluating-snr-performance-of-fmfb-demodulators-at-high-cnr/</link>
+                <guid>https://www.allaboutcircuits.com/technical-articles/evaluating-snr-performance-of-fmfb-demodulators-at-high-cnr/</guid>
+                <description><![CDATA[While feedback lowers the FM detection threshold, it offers no noise advantage over conventional receivers when the carrier power is strong. Discover why in this discussion and mathematical analysis.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Arar_406_SNR_800x450.jpg" />
+                <dc:subject><![CDATA[Analog, Filters, Oscillators, Wireless/RF, Transceivers, Audio, Automotive, Communication, Consumer Electronics, Telecom, Modulation, Wireless Communication,]]></dc:subject>
+                <dc:date>2026-09-05T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Targeting Robotics, TI Claims First Commercial CAN XL Transceiver]]></title>
+                <link>https://www.allaboutcircuits.com/news/targeting-robotics-ti-claims-first-commercial-can-xl-transceiver/</link>
+                <guid>https://www.allaboutcircuits.com/news/targeting-robotics-ti-claims-first-commercial-can-xl-transceiver/</guid>
+                <description><![CDATA[Touted as the first commercial CAN XL transceiver, the device offers 20 Mbps data rates, larger payloads, and CAN FD compatibility for industrial and robotic networks. ]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Josh_TI_CAN_XL_LEAD.jpeg" />
+                <dc:subject><![CDATA[Digital ICs, ASICs, Industrial Automation, Interconnects, Manufacturing, Robotics, Automotive, Communication, IoT, Transceivers, Motor Control, Robotics,]]></dc:subject>
+                <dc:date>2026-09-04T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Paragraf Launches 12-Channel Graphene FET Platform and Real-Time Reader]]></title>
+                <link>https://www.allaboutcircuits.com/news/paragraf-launches-12-channel-graphene-fet-platform-and-real-time-reader/</link>
+                <guid>https://www.allaboutcircuits.com/news/paragraf-launches-12-channel-graphene-fet-platform-and-real-time-reader/</guid>
+                <description><![CDATA[The PMF2002 multiplexes 12 customer-functionalized graphene sensing channels on one device, while the new Enterprise Reader adds direct electronic readout and real-time analysis.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/The_PMF2002_and_Enterprise_Reader.jpg" />
+                <dc:subject><![CDATA[Power, Power Supplies, Industrial Automation, Sensors,]]></dc:subject>
+                <dc:date>2026-09-04T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Why Vibration Is Becoming the New ‘Vital Sign’ in Industrial Systems]]></title>
+                <link>https://www.allaboutcircuits.com/industry-articles/why-vibration-is-becoming-the-new-vital-sign-in-industrial-systems/</link>
+                <guid>https://www.allaboutcircuits.com/industry-articles/why-vibration-is-becoming-the-new-vital-sign-in-industrial-systems/</guid>
+                <description><![CDATA[Learn how MEMS sensor technology brings edge AI and vibration monitoring to smart manufacturing, enabling early defect detection and predictive maintenance to prevent downtime.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/STMicro_IA_Why_vibration_THUMB.jpg" />
+                <dc:subject><![CDATA[Electromechanical, MEMS, Sensors, MEMS Sensors, Motion Sensors, AI/Neural Networks, Machine Learning, Deep Learning, Industrial Automation, Process Control, Manufacturing, Robotics, IoT, Industrial, Motor Control, Industrial, Robotics,]]></dc:subject>
+                <dc:date>2026-09-03T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[AMD to Bring UCIe Chiplet Connectivity to Versal RF Adaptive SoCs]]></title>
+                <link>https://www.allaboutcircuits.com/news/amd-to-bring-ucie-chiplet-connectivity-to-versal-rf-adaptive-socs/</link>
+                <guid>https://www.allaboutcircuits.com/news/amd-to-bring-ucie-chiplet-connectivity-to-versal-rf-adaptive-socs/</guid>
+                <description><![CDATA[Select Versal RF Series devices will be AMD's first adaptive SoCs with native UCIe 1.1 interfaces, allowing designers to co-package third-party chiplets. 
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/MD_Versal_RF_Series_chiplets.jpg" />
+                <dc:subject><![CDATA[Embedded, SoC, AI/Neural Networks, Machine Learning, IT / Networking, Wireless Networking,]]></dc:subject>
+                <dc:date>2026-09-03T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Building a 5 V Single-Supply Electret Microphone Preamp]]></title>
+                <link>https://www.allaboutcircuits.com/projects/building-a-5-v-single-supply-electret-microphone-preamp/</link>
+                <guid>https://www.allaboutcircuits.com/projects/building-a-5-v-single-supply-electret-microphone-preamp/</guid>
+                <description><![CDATA[This project brief describes how to build a compact, single-supply preamplifier module that converts the output of an electret microphone into a usable line-level audio signal.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Sharma_Mic_Preamp_800x450.jpg" />
+                <dc:subject><![CDATA[Analog, Amplifiers, Development Boards, EDA Tools , PCB Layout, Schematic Design, PCBs, Assembly, Fabrication, Layout, Audio, Amplifiers, Microphones, Consumer Electronics,]]></dc:subject>
+                <dc:date>2026-09-02T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[IBM &amp; Arm Reveal Fruits of Partnership: The First Dual-Architecture CPU ]]></title>
+                <link>https://www.allaboutcircuits.com/news/ibm-and-arm-reveal-fruits-of-partnership-the-first-dual-architecture-cpu/</link>
+                <guid>https://www.allaboutcircuits.com/news/ibm-and-arm-reveal-fruits-of-partnership-the-first-dual-architecture-cpu/</guid>
+                <description><![CDATA[The 2-nm processor runs Arm and z/Architecture instructions natively on the same core.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/IBM-Arm_dual-architecture_CPU.jpg" />
+                <dc:subject><![CDATA[Digital ICs, Processors, Cloud Computing, Software, Services, Storage, Computers &amp; Peripherals, CPUs,]]></dc:subject>
+                <dc:date>2026-09-02T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[What CAM and DFM Reviews Reveal Before Multilayer PCBs Enter Production]]></title>
+                <link>https://www.allaboutcircuits.com/industry-articles/what-cam-and-dfm-reviews-reveal-before-multilayer-pcbs-enter-production/</link>
+                <guid>https://www.allaboutcircuits.com/industry-articles/what-cam-and-dfm-reviews-reveal-before-multilayer-pcbs-enter-production/</guid>
+                <description><![CDATA[Explore common design-to-manufacturing gaps observed during pre-production engineering checks of FR-4 boards, from stackup imbalances to tight clearances.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/AIVON_CAM_800x450.jpg" />
+                <dc:subject><![CDATA[EDA Tools , PCB Layout, General, PCBs, Fabrication, Layout,]]></dc:subject>
+                <dc:date>2026-09-01T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Bourns Adds LTCC Bandpass Filters for 5G C-Band RF Front Ends]]></title>
+                <link>https://www.allaboutcircuits.com/news/bourns-adds-ltcc-band-pass-filters-for-5g-c-band-rf-front-ends/</link>
+                <guid>https://www.allaboutcircuits.com/news/bourns-adds-ltcc-band-pass-filters-for-5g-c-band-rf-front-ends/</guid>
+                <description><![CDATA[The new devices provide compact C-band filtering options for 5G RF front-end designs from 3,300 MHz to 5,000 MHz.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Bourns%E2%80%99_new_FBP_Series_LTCC_band-pass_filters.jpg" />
+                <dc:subject><![CDATA[Analog, Filters, Wireless/RF, Modules, Telecom, Wireless Communication, 5G,]]></dc:subject>
+                <dc:date>2026-09-01T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[A Peek Inside the Electronics on the Nancy Grace Roman Space Telescope]]></title>
+                <link>https://www.allaboutcircuits.com/news/a_peek_inside_the_electronics_nancy_grace_roman_space_telescope/</link>
+                <guid>https://www.allaboutcircuits.com/news/a_peek_inside_the_electronics_nancy_grace_roman_space_telescope/</guid>
+                <description><![CDATA[The Nancy Grace Roman Space Telescope’s mirror may get the headlines, but its detector chips, photon-counting cameras, and downlink amplifier tell the electronics story.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Roman_Telescope_2.jpg" />
+                <dc:subject><![CDATA[Analog, Amplifiers, Filters, Cooling, Digital ICs, ASICs, General, IC Design, Custom, Optoelectronics, Optical Sensors, Sensors, Optical Sensors, Wireless/RF, Digital Signal Processing, Image Processing, Lighting, Light Sensors, Military/Aero/Space,]]></dc:subject>
+                <dc:date>2026-08-31T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[MaxLinear Unveils Control-Plane Portfolio for Next-Gen AI Infrastructure]]></title>
+                <link>https://www.allaboutcircuits.com/news/maxlinear-unveils-control-plane-portfolio-for-next-gen-ai-infrastructure/</link>
+                <guid>https://www.allaboutcircuits.com/news/maxlinear-unveils-control-plane-portfolio-for-next-gen-ai-infrastructure/</guid>
+                <description><![CDATA[RackCommander groups MaxLinear's USB UARTs, RS-485 transceivers, GPIO expanders, and power devices for rack-level management.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Jake_MaxLinear_Rackcommander_LEAD.jpg" />
+                <dc:subject><![CDATA[Digital ICs, Processors, Embedded, Microcontroller, AI/Neural Networks, Machine Learning, Deep Learning, Cloud Computing, Software, Services, Storage, Computers &amp; Peripherals, Interface Standards, IoT, Transceivers,]]></dc:subject>
+                <dc:date>2026-08-31T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[FM Demodulation with Feedback: Exploring Threshold Reduction Mechanisms]]></title>
+                <link>https://www.allaboutcircuits.com/technical-articles/fm-demodulation-with-feedback-exploring-threshold-reduction-mechanisms/</link>
+                <guid>https://www.allaboutcircuits.com/technical-articles/fm-demodulation-with-feedback-exploring-threshold-reduction-mechanisms/</guid>
+                <description><![CDATA[By closing a feedback loop around the demodulator, the FMFB architecture narrows the noise bandwidth and lowers the FM threshold, without improving SNR at high CNR.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Arar_405_FM_800x450.jpg" />
+                <dc:subject><![CDATA[Analog, Filters, Oscillators, Wireless/RF, Transceivers, Audio, Automotive, Communication, Consumer Electronics, Telecom, Modulation, Wireless Communication,]]></dc:subject>
+                <dc:date>2026-08-29T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[From BMW to Data Centers: Brands Tap 3 Known Chips in New Ways]]></title>
+                <link>https://www.allaboutcircuits.com/news/from-bmw-data-centers-brands-tap-3-known-chips-new-ways/</link>
+                <guid>https://www.allaboutcircuits.com/news/from-bmw-data-centers-brands-tap-3-known-chips-new-ways/</guid>
+                <description><![CDATA[Companies across industries are leveraging tech from NXP, MaxLinear and Nordic Semiconductor on automotive UWB, accelerated OpenZFS storage, and low-power Bluetooth Mesh sensing.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/August_design_wins.jpg" />
+                <dc:subject><![CDATA[Digital ICs, Processors, Sensors, Optical Sensors, Wireless/RF, Transceivers, AI/Neural Networks, Machine Learning, Automotive, Communication, Cloud Computing, Storage,]]></dc:subject>
+                <dc:date>2026-08-28T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[The 4N35: One LED, One Phototransistor, and a Barrier Nothing Crosses ]]></title>
+                <link>https://www.allaboutcircuits.com/news/the-4n35-one-led-one-phototransistor-and-a-barrier-nothing-crosses/</link>
+                <guid>https://www.allaboutcircuits.com/news/the-4n35-one-led-one-phototransistor-and-a-barrier-nothing-crosses/</guid>
+                <description><![CDATA[An LED facing a phototransistor inside a 6-pin package became the default way to pass a signal across a barrier while blocking everything else.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/4N35_Feature.jpg" />
+                <dc:subject><![CDATA[Optoelectronics, LEDs, Lighting, LEDs,]]></dc:subject>
+                <dc:date>2026-08-28T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Shorten Hardware Development Cycles by Parallelizing Firmware and PCB Design]]></title>
+                <link>https://www.allaboutcircuits.com/industry-articles/shorten-hardware-development-cycles-by-parallelizing-firmware-and-pcb-design/</link>
+                <guid>https://www.allaboutcircuits.com/industry-articles/shorten-hardware-development-cycles-by-parallelizing-firmware-and-pcb-design/</guid>
+                <description><![CDATA[Learn to decouple application logic from physical routing using a Board Support Package (BSP). This layered architecture accelerates prototyping and minimizes costly respins on custom boards.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Anoria_Iteration_800x450.jpg" />
+                <dc:subject><![CDATA[Development Boards, EDA Tools , Embedded, Embedded Software, Firmware, Microcontroller, Embedded Software, General, PCBs,]]></dc:subject>
+                <dc:date>2026-08-27T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Microchip Reveals One of Its Lowest Power Atomic Clocks Yet]]></title>
+                <link>https://www.allaboutcircuits.com/news/microchip-reveals-one-of-its-lowest-power-atomic-clocks-yet/</link>
+                <guid>https://www.allaboutcircuits.com/news/microchip-reveals-one-of-its-lowest-power-atomic-clocks-yet/</guid>
+                <description><![CDATA[Drawing less than 120 mW and tolerating 30 krad of total ionizing dose, the chip-scale atomic clock keeps LEO satellites synchronized when GNSS timing is unavailable.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Space_CSAC-SA65.jpg" />
+                <dc:subject><![CDATA[Analog, Oscillators, Military/Aero/Space, Navigation,]]></dc:subject>
+                <dc:date>2026-08-27T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[AI Craze Drives Wave of Semiconductor Deals Toward $1T Chip Era]]></title>
+                <link>https://www.allaboutcircuits.com/news/ai-craze-drives-wave-of-semiconductor-deals-toward-1-trillion-dollar-chip-era/</link>
+                <guid>https://www.allaboutcircuits.com/news/ai-craze-drives-wave-of-semiconductor-deals-toward-1-trillion-dollar-chip-era/</guid>
+                <description><![CDATA[In this edition of Business Shorts, we spotlight five announcements that show AI demand is reshaping everything from Wall Street financing to washing machines.
+]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/August_business_shorts.jpeg" />
+                <dc:subject><![CDATA[Digital ICs, Processors, Embedded, SoC, Memory, Non-volatile, Power, Power Supplies, AI/Neural Networks, Machine Learning, Deep Learning, Classification,]]></dc:subject>
+                <dc:date>2026-08-26T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Build an Instrumentation Amplifier with Picoamp-Level Input Bias Current]]></title>
+                <link>https://www.allaboutcircuits.com/projects/build-an-instrumentation-amplifier-with-picoamp-level-input-bias-current/</link>
+                <guid>https://www.allaboutcircuits.com/projects/build-an-instrumentation-amplifier-with-picoamp-level-input-bias-current/</guid>
+                <description><![CDATA[Discover how the LT1079 quad op-amp minimizes sensor loading in battery-powered designs. Active cancellation and an onboard bridge network ensure maximum precision for resistive sensors.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Sharma_Apr_Pico_800x450.jpg" />
+                <dc:subject><![CDATA[Analog, Amplifiers, Development Boards, EDA Tools , PCB Layout, Schematic Design, Embedded, General, PCBs, Assembly, Fabrication, Layout, Sensors, Industrial Automation, Sensors, Automotive, Sensors, IoT, Development Boards, Embedded, Sensors,]]></dc:subject>
+                <dc:date>2026-08-26T07:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[Powering AI-RAN: How Telecom Power Architectures Must Evolve for the GPU Era]]></title>
+                <link>https://www.allaboutcircuits.com/industry-articles/powering-ai-ran-how-telecom-power-architectures-must-evolve-for-the-gpu-era/</link>
+                <guid>https://www.allaboutcircuits.com/industry-articles/powering-ai-ran-how-telecom-power-architectures-must-evolve-for-the-gpu-era/</guid>
+                <description><![CDATA[Accelerator-based computing brings faster load changes, higher current density, and tighter thermal constraints, requiring updates to rectifiers, DC/DC conversion, and battery backup.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Infineon_IA_AI_RAN_800x450.jpeg" />
+                <dc:subject><![CDATA[Power, Power Supplies, Power-Management ICs, Wireless/RF, AI/Neural Networks, IT / Networking, Wireless Networking, Telecom, Wireless Communication,]]></dc:subject>
+                <dc:date>2026-08-25T16:00:00+00:00</dc:date>
+            </item>
+            
+            <item>
+                <title><![CDATA[NXP Launches MCUs Blending 10BASE-T1S Ethernet and Post-Quantum Security]]></title>
+                <link>https://www.allaboutcircuits.com/news/nxp-launches-mcus-blending-10base-t1s-ethernet-and-post-quantum-security/</link>
+                <guid>https://www.allaboutcircuits.com/news/nxp-launches-mcus-blending-10base-t1s-ethernet-and-post-quantum-security/</guid>
+                <description><![CDATA[The new MCX A5 MCUs integrate 10BASE-T1S Ethernet, topology discovery, and post-quantum security to streamline and protect industrial edge networks.]]></description>
+                <enclosure url="https://www.allaboutcircuits.com/uploads/thumbnails/Jeff_MCX_A5_MCUs_THUMB.jpeg" />
+                <dc:subject><![CDATA[Digital ICs, Processors, Embedded, Microcontroller, Memory, Non-volatile, Volatile, Industrial Automation, Communication, Interconnects, IT / Networking, Embedded Networking, IoT, Embedded, Industrial,]]></dc:subject>
+                <dc:date>2026-08-25T07:00:00+00:00</dc:date>
+            </item>
+            
+    </channel>
+</rss>

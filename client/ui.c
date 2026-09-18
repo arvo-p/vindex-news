@@ -114,8 +114,17 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 	}
 
 	if(expanded_mode){
-		if(refresh) ui_printf("\e[38;5;%dm\e[%dG\u2502 ", colorScheme->ui_walls, 5);
-		else ui_printf("\e[%dG",7);
+		if(entry_item->is_separator){
+			ui_printf("\e[38;5;%dm\e[%dG\u251C\u2500", colorScheme->ui_walls, 5);
+		} else {
+			ui_printf("\e[38;5;%dm\e[%dG\u2502 ", colorScheme->ui_walls, 5);
+		}
+	} else {
+		if(entry_item->is_separator){
+			ui_printf("\e[38;5;%dm\u2500\u2500", colorScheme->ui_walls);
+		} else {
+			ui_printf("  ");
+		}
 	}
 
 	if(entry_item->seen) ui_printf("\e[0;38;5;%dm",colorScheme->seen);
@@ -131,6 +140,7 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 	if(shorted) ui_printf("...");
 		
 	if(entry_item->downloaded) ui_printf(" 🌠");
+	if(entry_item->bookmarked) ui_printf(" ⭐");
 
 	if(expanded_mode){
 		ui_printf("\e[7G"); // cursor pos 7 :: title
@@ -340,6 +350,8 @@ void draw_update(short refresh){
 
 	if(selected_tab->tab_mode == TAB_TREE) display_urltree();
 	else display_entries(refresh);
+
+	draw_statusbar();
 
 	ui_flush();
 	return;

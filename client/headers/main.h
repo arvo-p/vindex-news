@@ -36,6 +36,8 @@ typedef struct entry{
 	char * url_nohttp;
 	unsigned char seen:1;
 	unsigned char downloaded:1;
+	unsigned char is_separator:1;
+	unsigned char bookmarked:1;
 	struct entry * next;
 	struct entry * previous;
 	void * child_el;

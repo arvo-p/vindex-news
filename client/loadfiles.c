@@ -537,6 +537,9 @@ int LOAD_GetEntries(enum LoadEntriesMode mode){
 	}
 
 	if(i > 0 && entry_block) entry_block->start_index = 95-((i-1)%96);
+	if(mode == OFFSET_LAST_ENTRY && i > 0 && initial_entry != NULL) {
+		initial_entry->is_separator = 1;
+	}
 	initial_entry = previous_entry;	
 
 	fclose(fp);
@@ -555,13 +558,20 @@ int LOAD_UpdateInteractionInformation(entry * target){
 	/*
 	 * [ID];[SEEN];[DOWNLOADED];[BOOKMARKED]
 	 */
-	fprintf(fpw, "%lx;%d;%d\n", target->id, (int)target->seen, (int)target->downloaded); 
+	fprintf(fpw, "%lx;%d;%d;%d\n", target->id, (int)target->seen, (int)target->downloaded, (int)target->bookmarked); 
 	if(!fpr) goto updateInfoFromFile_end;
 
-	char * args[3] = {NULL, NULL, NULL};
+	char * args[4] = {NULL, NULL, NULL, NULL};
 	int args_c = 1;
 
 	while(fgets(line, sizeof(line), fpr)){				
+		int len = strlen(line);
+		while(len > 0 && (line[len-1] == '\n' || line[len-1] == '\r')) {
+			line[len-1] = 0;
+			len--;
+		}
+		if (len == 0) continue;
+
 		memset(args, 0, sizeof args);
 		args_c = 1;
 
@@ -575,7 +585,11 @@ int LOAD_UpdateInteractionInformation(entry * target){
 			if(args_c > 3) break;
 		}
 		
-		if(target->id != strtoul(args[0], NULL, 16)) fprintf(fpw, "%s;%s;%s", args[0], args[1], args[2]);	
+		if(target->id != strtoul(args[0], NULL, 16)){
+			fprintf(fpw, "%s;%s;%s", args[0], args[1], args[2]);
+			if (args[3]) fprintf(fpw, ";%s\n", args[3]);
+			else fprintf(fpw, ";0\n");
+		}
 	}
 
 	fclose(fpr);
@@ -599,10 +613,17 @@ int LOAD_GetInteractionInformation(){
 		return 0;
 	}
 
-	char * args[3] = {NULL, NULL, NULL};
+	char * args[4] = {NULL, NULL, NULL, NULL};
 	int args_c = 1;
 
 	while (fgets(line, sizeof(line), fp)){				
+		int len = strlen(line);
+		while(len > 0 && (line[len-1] == '\n' || line[len-1] == '\r')) {
+			line[len-1] = 0;
+			len--;
+		}
+		if (len == 0) continue;
+
 		entry * entry_load = NULL;
 
 		memset(args, 0, sizeof args);
@@ -619,12 +640,11 @@ int LOAD_GetInteractionInformation(){
 		}
 		entry_load = initial_entry;
 		while(entry_load){
-			if(entry_load->id == strtoul(args[0], NULL, 16)){ //if it doesnt match -> delete from list, create a function to remove lines
-									 /* save in a ToDelete array
-									  * later a function will run through the list and recopy only what is outside the array
-									  * */
+			if(entry_load->id == strtoul(args[0], NULL, 16)){
 				entry_load->seen = (int)args[1][0] - (int)'0';
 				entry_load->downloaded = (int)args[2][0] - (int)'0';
+				if (args[3]) entry_load->bookmarked = (int)args[3][0] - (int)'0';
+				else entry_load->bookmarked = 0;
 			}
 			entry_load = entry_load->next;
 		}
