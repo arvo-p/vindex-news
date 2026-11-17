@@ -2,12 +2,14 @@
 #define FILES_PATH_HPP
 
 #include <string>
+#ifdef _WIN32
 #include <windows.h>
 #include <shlobj.h>
+#endif
 
 class files_path{
 	public:
-		std::string rootDir = "kNews";
+		std::string rootDir = "vindex";
 		std::string entriesFilePath = "entries.dat";
 		std::string updateRecordFilePath = "updates.dat";
 		std::string feedListFilePath = "webfeeds.conf";

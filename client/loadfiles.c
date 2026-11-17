@@ -2,8 +2,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
 #include <shlobj.h>
 #include <direct.h>
+#define PATH_SEP '\\'
+#define PATH_SEP_STR "\\"
+#else
+#include <strings.h>
+#include <limits.h>
+#include <pwd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#define PATH_SEP '/'
+#define PATH_SEP_STR "/"
+#define _stricmp strcasecmp
+#endif
 #include "headers/loadfiles.h"
 #include "headers/tabs.h"
 #include "headers/main.h"
@@ -51,7 +65,7 @@ int LOAD_INIT(struct PublicLoad * this){
 int LOAD_ReloadEntries(){
 	LOAD_GetEntries(OFFSET_LAST_ENTRY);
 	if(selected_tab->tab_mode == TAB_SIMPLE) setGlobalEntry(selected_tab->offset, initial_entry);
-	else if(selected_tab->tab_mode == TAB_GROUP){
+	else if(selected_tab->tab_mode == TAB_GROUP && selected_tab->category && selected_tab->category->first_member){
 		selected_tab->offset->group_member = selected_tab->category->first_member;
 		setGlobalEntry(selected_tab->offset, selected_tab->category->first_member->entry);
 	}
@@ -61,11 +75,11 @@ int LOAD_ReloadEntries(){
 char * pathAppend(char * pth, char * toAppend){
 	int len = strlen(pth);
 	int addDir = 0;
-	if(pth[len-1] != '\\') addDir=1;
+	if(len > 0 && pth[len-1] != PATH_SEP) addDir=1;
 
 	char * newstr = malloc(len+strlen(toAppend)+addDir+1);
 	
-	snprintf(newstr, len + strlen(toAppend) + 2, "%s%s%s", pth, addDir ? "\\" : "", toAppend);
+	snprintf(newstr, len + strlen(toAppend) + addDir + 1, "%s%s%s", pth, addDir ? PATH_SEP_STR : "", toAppend);
 	return newstr;
 }
 
@@ -99,14 +113,35 @@ int LOAD_GetFilepaths(){
 	char * file_m = "in_.dat";
 	char * file_gConf = "user_groups.conf";
 	char * file_news = "entries.dat";
-	char * folder_archive = "archive\\";
-	char * folder_colorscheme = "colorscheme\\";
+	char * folder_archive = "archive" PATH_SEP_STR;
+	char * folder_colorscheme = "colorscheme" PATH_SEP_STR;
 
+#ifdef _WIN32
 	char pth_Appdata[MAX_PATH];
 
 	SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, pth_Appdata);
-	pth_Root = pathAppend(pth_Appdata, "kNews");
+	pth_Root = pathAppend(pth_Appdata, "vindex");
 	_mkdir(pth_Root);
+#else
+	char pth_Appdata[PATH_MAX];
+	const char * xdg = getenv("XDG_DATA_HOME");
+	if(xdg && xdg[0] != '\0'){
+		snprintf(pth_Appdata, sizeof(pth_Appdata), "%s", xdg);
+	}else{
+		const char * home = getenv("HOME");
+		if(!home || home[0] == '\0'){
+			struct passwd * pw = getpwuid(getuid());
+			home = pw ? pw->pw_dir : ".";
+		}
+		char pth_Local[PATH_MAX];
+		snprintf(pth_Local, sizeof(pth_Local), "%s/.local", home);
+		mkdir(pth_Local, 0755);
+		snprintf(pth_Appdata, sizeof(pth_Appdata), "%s/.local/share", home);
+	}
+	mkdir(pth_Appdata, 0755);
+	pth_Root = pathAppend(pth_Appdata, "vindex");
+	mkdir(pth_Root, 0755);
+#endif
 
 	pth_EntriesInfo = pathAppend(pth_Root, file);
 	pth_EntriesInfoMod = pathAppend(pth_Root, file_m);
@@ -480,7 +515,7 @@ int LOAD_GetEntry(char * line, entry * new_entry, entry ** previous_entry, int *
 
 int LOAD_GetEntries(enum LoadEntriesMode mode){
 	FILE * fp;
-	char line[400];
+	char line[1024];
 
 	/*
 	 * Entries are loaded upside down in memory.
@@ -490,14 +525,15 @@ int LOAD_GetEntries(enum LoadEntriesMode mode){
 	 *	OFFSET_LAST_ENTRY -> Load entries after an offset ID.
 	 */
 
-	int isOffsetConditionSatisfied = 0;
 	static char * entryLastLoadedID = NULL;
 	static char * offsetID = NULL;
-	if(entryLastLoadedID == NULL) entryLastLoadedID = malloc(8);
-	if(offsetID == NULL) offsetID = malloc(8);
+	if(entryLastLoadedID == NULL) entryLastLoadedID = calloc(1, 32);
+	if(offsetID == NULL) offsetID = calloc(1, 32);
 	if(mode == OFFSET_LAST_ENTRY){
 		strcpy(offsetID, entryLastLoadedID);
 	}
+
+	int isOffsetConditionSatisfied = (mode == NO_OFFSET || offsetID[0] == '\0' || initial_entry == NULL) ? 1 : 0;
 
 	entry * previous_entry = (mode == OFFSET_LAST_ENTRY) ? initial_entry : NULL;
 	static int n_parent = 0;
@@ -752,7 +788,7 @@ int LOAD_ModifyGroups(int groupid, const char * groupname, short action){
 	if ((action == 2 || action == 3) && doesFileExist == 1 && matchedLineNum > 0){
 		if (action == 3 && isGroupnameArgumentMatched) return 1; // Cannot rename to a name that already exists
 
-		char tmp_path[256];
+		char tmp_path[1024];
 		snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", pth_gConf);
 
 		FILE *fin = fopen(pth_gConf, "rb");
@@ -824,7 +860,7 @@ int LOAD_ModifyWebfeeds(const char * target_url, const char * old_groupname, con
 		return 1;
 	}
 
-	char tmp_path[256];
+	char tmp_path[1024];
 	snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", pth_Webfeeds);
 
 	FILE *fin = fopen(pth_Webfeeds, "rb");

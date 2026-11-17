@@ -41,6 +41,7 @@ groups::groups(){
 		int i=0;
 		while(getline(f, line)){
 			i++;
+			while(!line.empty() && line.back() == '\r') line.pop_back();
 			if(inGroups){
 				if((args = ParseArguments(line)).empty()) continue; 
 				if(args[0] == "register-group"){

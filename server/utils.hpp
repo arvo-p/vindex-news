@@ -13,6 +13,7 @@ int ConcatenateNumbers(int n, int a);
 unsigned long GenerateNewId();
 bool GetDatetime(std::string &date, std::string type, struct tm * t);
 int ParseAnyDatetime(std::string &date, struct tm * t);
+time_t TmToUtcTime(struct tm * t);
 int CompareDates(struct tm * d1, struct tm * d2);
 void DebugPrintDate(struct tm * t);
 

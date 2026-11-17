@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <windows.h>
+#include <stdbool.h>
 #include <stdarg.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/ioctl.h>
+#endif
 #include "headers/ui.h"
 #include "headers/main.h"
 #include "headers/tabs.h"
@@ -60,13 +66,28 @@ void newline();
 void EmptyScreen();
 void SetCursorLastLine();
 
+void get_terminal_size(int *cols, int *rows){
+#ifdef _WIN32
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	*cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+	*rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+#else
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0 && w.ws_row > 0) {
+		*cols = w.ws_col;
+		*rows = w.ws_row;
+	} else if (*cols == 0 || *rows == 0) {
+		*cols = 80;
+		*rows = 24;
+	}
+#endif
+}
+
 void * winResize_Loop(void * arg){
 	int m = display_mode * (-2) + 1;
 	while(1){
-		CONSOLE_SCREEN_BUFFER_INFO csbi;
-		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-		winSZ[0] = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-		winSZ[1] = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;	
+		get_terminal_size(&winSZ[0], &winSZ[1]);
 
 		if(winSZ[0] != winSZ[2] || winSZ[1] != winSZ[3]){
 		
@@ -81,14 +102,18 @@ void * winResize_Loop(void * arg){
 
 		winSZ[2] = winSZ[0];
 		winSZ[3] = winSZ[1];
+#ifdef _WIN32
 		Sleep(300);
+#else
+		usleep(300000);
+#endif
 	}
 
 	return 0;
 }
 
 void draw_header(){
-	char * appname = "KOALA NEWS";
+	char * appname = "VINDEX";
 	int margin = (winSZ[0] - (int)strlen(appname))/2-8;
 	// int expanded = winSZ[0] > displayThreshold; // unused
 	ui_printf("\n");

@@ -3,6 +3,7 @@
 #include "blacklist.hpp"
 #include "utils.hpp"
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <curl/curl.h>
 #include <cstring>
@@ -20,10 +21,8 @@ feed::feed(){
 
 int feed::Save(){
 	cout << "Sorting entries" << endl;
-	std::sort(entryList.begin(), entryList.end(), [](const Entry& a, const Entry& b){
-		struct tm tmA = a.date;
-		struct tm tmB = b.date;
-		return std::mktime(&tmA) < std::mktime(&tmB);
+	std::stable_sort(entryList.begin(), entryList.end(), [](const Entry& a, const Entry& b){
+		return a.timestamp < b.timestamp;
 	});
 
 	cout << "Saving entries" << endl;
@@ -60,9 +59,14 @@ int feed::RecordEntry(string &entry_title, string &entry_link, rss_url &rssUrl, 
 	entry.link = entry_link;
 	entry.rssUrl = rssUrl;
 	
-	struct tm date;
-	ParseAnyDatetime(date_str, &date);
-	entry.date = date;
+	struct tm date = {};
+	if(ParseAnyDatetime(date_str, &date) == 0){
+		entry.date = date;
+		entry.timestamp = TmToUtcTime(&date);
+	}else{
+		entry.date = date;
+		entry.timestamp = 0;
+	}
 
 	entryList.push_back(entry);
 	return 0;
@@ -181,6 +185,7 @@ int feed::Parse(string &buffer, rss_url &rssUrl){
 	}catch(const exception& e){
 		cout << "Parsing failed. Buffer size: " << buffer.length() << " Content: " << buffer.substr(0, min((int)buffer.length(), 200)) << endl;
 		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		delete[] parsed;
 		return 1;
 	}
 
@@ -189,8 +194,13 @@ int feed::Parse(string &buffer, rss_url &rssUrl){
 		node = doc.first_node("feed");
 		if(node == NULL){
 			node = doc.first_node("rdf:RDF");
-			rssUrl.feedType = RDF;
-			ret = feed::ParseRdf(rssUrl, node);
+			if(node == NULL){
+				feed::ParsePrintStatus(rssUrl, FAILED, 0);
+				ret = 1;
+			}else{
+				rssUrl.feedType = RDF;
+				ret = feed::ParseRdf(rssUrl, node);
+			}
 		}else{
 			rssUrl.feedType = ATM;
 			ret = feed::ParseAtom(rssUrl, node);
@@ -208,10 +218,15 @@ int feed::ParseRss(rss_url &rssUrl, rapidxml::xml_node<> *node){
 	rapidxml::xml_node<> *item, *title_node, *link_node, *pdate_node;
 	string channel_date_str = "";
 
-	node = node->first_node("channel");
+	node = node ? node->first_node("channel") : NULL;
+	if(node == NULL){
+		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		return 1;
+	}
 	pdate_node = node->first_node("lastBuildDate");
 	if(pdate_node == NULL) pdate_node = node->first_node("pubDate");
 	if(pdate_node == NULL) pdate_node = node->first_node("published");
+	if(pdate_node == NULL) pdate_node = node->first_node("dc:date");
 	
 	if(pdate_node != NULL) {
 		channel_date_str = pdate_node->value();
@@ -224,7 +239,7 @@ int feed::ParseRss(rss_url &rssUrl, rapidxml::xml_node<> *node){
 	item = node->first_node("item");
 
 	int countNewEntries = 0;
-	struct tm tmNew;
+	struct tm tmNew = {};
 	bool tmNewInit = false;
 
 	while(item){
@@ -232,7 +247,11 @@ int feed::ParseRss(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		link_node = item->first_node("link");
 		title_node = item->first_node("title");
 		pdate_node = item->first_node("pubDate");
-		if(!link_node || !title_node || !pdate_node) break;
+		if(!pdate_node) pdate_node = item->first_node("dc:date");
+		if(!link_node || !title_node || !pdate_node){
+			item = item->next_sibling("item");
+			continue;
+		}
 
 		link_str = link_node->value();
 		title_str = title_node->value();
@@ -284,7 +303,11 @@ int feed::ParseRss(rss_url &rssUrl, rapidxml::xml_node<> *node){
 }
 
 int feed::ParseRdf(rss_url &rssUrl, rapidxml::xml_node<> *node){
-	struct tm t, tmNew;
+	if(node == NULL){
+		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		return 1;
+	}
+	struct tm t = {}, tmNew = {};
 	rapidxml::xml_node<> *item, *title_node, *link_node, *pdate_node;
 	string pubdate_str;
 
@@ -296,17 +319,21 @@ int feed::ParseRdf(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		string title_str, link_str, pubdate_str;
 		title_node = item->first_node("title");
 		link_node = item->first_node("link");
-
 		pdate_node = item->first_node("dc:date");
+		if(!title_node || !link_node || !pdate_node){
+			item = item->next_sibling("item");
+			continue;
+		}
 
 		title_str = title_node->value();
 		link_str = link_node->value();
 		pubdate_str = pdate_node->value();
 	
-		ParseAnyDatetime(pubdate_str, &t);
-		if(i++ == 0){
-			tmNew = t;
-		}else if(CompareDates(&t, &tmNew) == 1) tmNew = t;
+		if(ParseAnyDatetime(pubdate_str, &t) == 0){
+			if(i++ == 0){
+				tmNew = t;
+			}else if(CompareDates(&t, &tmNew) == 1) tmNew = t;
+		}
 
 		bool blacklisted = blacklistManager->Check(title_str,link_str); 
 		bool isEntryNew = feed::VerifyEntryDate(rssUrl.url,pubdate_str);
@@ -325,25 +352,28 @@ int feed::ParseRdf(rss_url &rssUrl, rapidxml::xml_node<> *node){
 	else
 		feed::ParsePrintStatus(rssUrl, FINISHED_UPDATED, countNewEntries);
 
-	feed::UpdateRecord(rssUrl.url, &tmNew);
+	if(i > 0) feed::UpdateRecord(rssUrl.url, &tmNew);
 
 	return 0;
 }
 
 int feed::ParseAtom(rss_url &rssUrl, rapidxml::xml_node<> *node){
+	if(node == NULL){
+		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		return 1;
+	}
 	rapidxml::xml_node<> *item, *title_node, *link_node, *pdate_node, *headerdate_node;
 	string pubdate_str;
 
 	headerdate_node = node->first_node("updated");
 	if(!headerdate_node) headerdate_node = node->first_node("lastBuildDate");
 
-	struct tm headerDatetime;
+	struct tm headerDatetime = {};
 	bool headerDefined = false;
 
 	if(headerdate_node){
-		headerDefined = true;
 		pubdate_str = headerdate_node->value();
-	    ParseAnyDatetime(pubdate_str, &headerDatetime); 
+		if(ParseAnyDatetime(pubdate_str, &headerDatetime) == 0) headerDefined = true;
 		if(feed::VerifyEntryDate(rssUrl.url, pubdate_str) == false){
 			feed::ParsePrintStatus(rssUrl, FINISHED_NOCHANGE, 0); 
 			return 1;
@@ -360,19 +390,25 @@ int feed::ParseAtom(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		pdate_node = item->first_node("updated");
 		if(!pdate_node) pdate_node = item->first_node("published");
 
+		rapidxml::xml_attribute<> *href_attr = link_node ? link_node->first_attribute("href") : NULL;
+		if(!title_node || !href_attr || !pdate_node){
+			item = item->next_sibling("entry");
+			continue;
+		}
+
 		title_str = title_node->value();
-		link_str = link_node->first_attribute("href")->value();
+		link_str = href_attr->value();
 		pubdate_str = pdate_node->value();
 
-		struct tm itemDatetime;
-		ParseAnyDatetime(pubdate_str,&itemDatetime);
-		
-		/* I noticed the YouTube header only has the <published> tag, which corresponds to the date of channel creation and
-		 * does not actually tell us the last update time. So I need to get from the item by doing a comparison.*/
+		struct tm itemDatetime = {};
+		if(ParseAnyDatetime(pubdate_str,&itemDatetime) == 0){
+			/* I noticed the YouTube header only has the <published> tag, which corresponds to the date of channel creation and
+			 * does not actually tell us the last update time. So I need to get from the item by doing a comparison.*/
 
-		if(!headerDefined || CompareDates(&headerDatetime, &itemDatetime) == 2){
-			headerDatetime = itemDatetime;    
-			headerDefined = true;
+			if(!headerDefined || CompareDates(&headerDatetime, &itemDatetime) == 2){
+				headerDatetime = itemDatetime;    
+				headerDefined = true;
+			}
 		}
 	
 		bool blacklisted = blacklistManager->Check(title_str,link_str); 
@@ -393,7 +429,7 @@ int feed::ParseAtom(rss_url &rssUrl, rapidxml::xml_node<> *node){
 	else
 		feed::ParsePrintStatus(rssUrl, FINISHED_UPDATED, countNewEntries);
 	
-	feed::UpdateRecord(rssUrl.url, &headerDatetime);
+	if(headerDefined) feed::UpdateRecord(rssUrl.url, &headerDatetime);
 	//DebugPrintDate(&headerDatetime);
 	
 	return 0;
@@ -413,7 +449,9 @@ int feed::Fetch(rss_url &rssUrl){
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYSTATUS, 0);
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
    	curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+#ifdef _WIN32
 	curl_easy_setopt(curl, CURLOPT_CAINFO, "../server/cacert.pem");
+#endif
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteData);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
@@ -431,6 +469,16 @@ int feed::Fetch(rss_url &rssUrl){
 	res = curl_easy_perform(curl);
  	if(res != CURLE_OK){
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		curl_easy_cleanup(curl);
+		curl_slist_free_all(headers);
+		return 1;
+	}
+	long http_code = 0;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+	if(http_code >= 400){
+		feed::ParsePrintStatus(rssUrl, FAILED, 0);
+		curl_easy_cleanup(curl);
 		curl_slist_free_all(headers);
 		return 1;
 	}

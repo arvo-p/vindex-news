@@ -1,5 +1,5 @@
 @echo off
 del *.o
-del news.exe
+del vindex.exe
 echo Cleaned up object files and executable.
 pause

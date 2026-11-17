@@ -13,6 +13,7 @@ struct Entry{
 	std::string link;
     rss_url rssUrl;
 	struct tm date;
+	time_t timestamp;
 };
 
 class feed{

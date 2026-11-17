@@ -14,6 +14,7 @@ void draw_cError();
 void draw_statusbar();
 void ClearLastLine();
 void ui_flush();
+void get_terminal_size(int *cols, int *rows);
 void * winResize_Loop(void * arg);
 
 extern int displayThreshold;

@@ -9,7 +9,7 @@ gcc -c tabs.c -I.
 gcc -c ui.c -I.
 
 echo Linking...
-gcc main.o cmd.o colorscheme.o loadfiles.o nav.o tabs.o ui.o -o news.exe -lpthread -lshell32
+gcc main.o cmd.o colorscheme.o loadfiles.o nav.o tabs.o ui.o -o vindex.exe -lpthread -lshell32
 
 if %errorlevel% equ 0 (
     echo Compilation successful!

@@ -178,10 +178,12 @@ int loadColorschemeFromFile(char * path){
 int initColorscheme(){
 	colorScheme = malloc(sizeof(struct colorscheme));
 	setAppDefaultColorscheme();
+#ifdef _WIN32
 	/*
 	 * temp
 	 */
 	loadColorschemeFromFile("C:/Users/gsppe/wezterm/news/colorschemes/latenight");
+#endif
 
 	getConfigValue("ui.entries.color", &colorScheme->entries, 'i');
 	getConfigValue("ui.url.color", &colorScheme->url, 'i');

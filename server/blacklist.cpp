@@ -18,6 +18,8 @@ int blacklist::Load(){
 
 	if(f.is_open()){
 		while(getline(f, line)){
+			while(!line.empty() && line.back() == '\r') line.pop_back();
+			if(line.empty()) continue;
 			if(line == "@blacklisted_urls") appendTo = 1;
 			if(line == "@blacklisted_words") appendTo = 0;
 			if(line[0] == '@') continue;
