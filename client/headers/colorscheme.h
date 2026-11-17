@@ -20,6 +20,11 @@ typedef struct colorscheme{
 	int title_sentence_case;
 	int title_prefix_color;
 	int title_prefix_maxlen;
+	int title_highlight_color;
+	int media_video_color;
+	int media_pdf_color;
+	int date_separators_enabled;
+	int date_separators_color;
 	char urlprefix_char;
 } colorscheme;
 

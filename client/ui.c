@@ -3,9 +3,12 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <ctype.h>
 #ifdef _WIN32
 #include <windows.h>
+#define strncasecmp _strnicmp
 #else
+#include <strings.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #endif
@@ -140,6 +143,88 @@ static void ui_apply_bg(void){
 static void ui_reset_with_bg(void){
 	ui_printf("\e[0m");
 	ui_apply_bg();
+}
+
+static int get_date_bucket(time_t published_at, time_t now){
+	if(!colorScheme->date_separators_enabled || published_at <= 0) return -1;
+	if(now <= published_at) return 0;
+	double age = difftime(now, published_at);
+	if(age < 86400.0) return 0;
+	if(age < 7.0 * 86400.0) return 1;
+	if(age < 30.0 * 86400.0) return 2;
+	if(age < 365.0 * 86400.0) return 3;
+	if(age < 2.0 * 365.0 * 86400.0) return 4;
+	if(age < 5.0 * 365.0 * 86400.0) return 5;
+	return 6;
+}
+
+static const char * get_date_bucket_label(int bucket){
+	switch(bucket){
+		case 1: return " --- One Day ago --- ";
+		case 2: return " --- One week ago --- ";
+		case 3: return " --- One Month Ago --- ";
+		case 4: return " --- One year ago --- ";
+		case 5: return " --- Two years ago --- ";
+		case 6: return " --- Five years ago --- ";
+		default: return NULL;
+	}
+}
+
+static int get_prev_entry_bucket(global_e * offset_pos, time_t now){
+	if(!colorScheme->date_separators_enabled) return -1;
+	entry * prev_e = NULL;
+	if(selected_tab->tab_mode == TAB_GROUP){
+		g_member * gp = getNextGroupEntry(offset_pos->group_member, PREVIOUS);
+		if(gp) prev_e = gp->entry;
+	}else{
+		prev_e = getNextEntry(offset_pos, PREVIOUS);
+	}
+	if(!prev_e) return 0;
+	return get_date_bucket(prev_e->published_at, now);
+}
+
+int ui_count_rows_for_sel(global_e * start_pos, int target_sel){
+	if(!start_pos || !start_pos->entry || target_sel < 0) return 0;
+
+	global_e iter = *start_pos;
+	time_t now = time(NULL);
+	int prev_bucket = get_prev_entry_bucket(&iter, now);
+	int rows = 0;
+
+	for(int i = 0; i <= target_sel && iter.entry != NULL; i++){
+		if(colorScheme->date_separators_enabled){
+			int bucket = get_date_bucket(iter.entry->published_at, now);
+			if(bucket > 0 && bucket > prev_bucket){
+				rows++;
+				prev_bucket = bucket;
+			}
+		}
+		rows++;
+
+		if(selected_tab->tab_mode == TAB_GROUP){
+			g_member * nxt = getNextGroupEntry(iter.group_member, NEXT);
+			if(!nxt) break;
+			iter.entry = nxt->entry;
+			iter.group_member = nxt;
+		}else{
+			if(setGlobalEntry(&iter, getNextEntry(&iter, NEXT))) break;
+		}
+	}
+	return rows;
+}
+
+static void ui_print_date_separator(int expanded_mode, const char * label){
+	if(!label) return;
+	ui_reset_with_bg();
+	ui_printf("\e[2K");
+	if(expanded_mode){
+		ui_printf("\e[38;5;%dm\e[%dG\u2502 ", colorScheme->ui_walls, 5);
+	}else{
+		ui_printf("  ");
+	}
+	ui_printf("\e[38;5;%dm%s", colorScheme->date_separators_color, label);
+	ui_reset_with_bg();
+	newline();
 }
 
 static int is_zebra_odd_row(int row_idx){
@@ -284,17 +369,100 @@ static int find_title_prefix_len(const char * title){
 	return 0;
 }
 
+static int url_has_ext(const char * url, const char * ext){
+	if(!url || !ext) return 0;
+	size_t ext_len = strlen(ext);
+	size_t path_len = strcspn(url, "?#");
+	if(path_len < ext_len) return 0;
+	return strncasecmp(url + path_len - ext_len, ext, ext_len) == 0;
+}
+
+int is_video_url(const char * url){
+	if(!url) return 0;
+	return (strstr(url, "youtube.com") != NULL ||
+			strstr(url, "youtu.be") != NULL ||
+			strstr(url, "odysee.com") != NULL ||
+			url_has_ext(url, ".mp4") ||
+			url_has_ext(url, ".webm") ||
+			url_has_ext(url, ".mkv"));
+}
+
+int is_pdf_url(const char * url){
+	return url_has_ext(url, ".pdf");
+}
+
+static void ui_print_media_prefix(const char * url){
+	if(is_video_url(url) && colorScheme->media_video_color >= 0){
+		ui_printf("\e[27;38;5;%dm\u25B6 ", colorScheme->media_video_color);
+	}else if(is_pdf_url(url) && colorScheme->media_pdf_color >= 0){
+		ui_printf("\e[27;38;5;%dm\u25C8 ", colorScheme->media_pdf_color);
+	}else{
+		ui_printf("\e[27;38;5;%dm%c ", colorScheme->urlprefix, colorScheme->urlprefix_char);
+	}
+}
+
+static int find_keyword_match_at(const char * title, size_t total_len, size_t pos){
+	int best_len = 0;
+	for(int k = 0; k < highlighted_words_count; k++){
+		const char * kw = highlighted_words[k];
+		size_t kw_len = strlen(kw);
+		if(kw_len == 0 || pos + kw_len > total_len) continue;
+		if((int)kw_len <= best_len) continue;
+		if(strncasecmp(title + pos, kw, kw_len) != 0) continue;
+
+		unsigned char first_c = (unsigned char)kw[0];
+		unsigned char last_c = (unsigned char)kw[kw_len - 1];
+		if(isalnum(first_c) && pos > 0 && isalnum((unsigned char)title[pos - 1])) continue;
+		if(isalnum(last_c) && (pos + kw_len < total_len) && isalnum((unsigned char)title[pos + kw_len])) continue;
+
+		best_len = (int)kw_len;
+	}
+	return best_len;
+}
+
 static void ui_print_title_text(const char * title, int len, int seen){
 	int base_fg = seen ? colorScheme->seen : colorScheme->entries;
-	int prefix_len = seen ? 0 : find_title_prefix_len(title);
-	if(prefix_len > 0){
-		if(prefix_len > len) prefix_len = len;
-		ui_printf("\e[38;5;%dm%.*s", colorScheme->title_prefix_color, prefix_len, title);
-		if(len > prefix_len){
-			ui_printf("\e[38;5;%dm%.*s", base_fg, len - prefix_len, title + prefix_len);
-		}
-	}else{
+	if(seen){
 		ui_printf("\e[38;5;%dm%.*s", base_fg, len, title);
+		return;
+	}
+
+	size_t total_len = strlen(title);
+	int prefix_len = find_title_prefix_len(title);
+	int do_keywords = (colorScheme->title_highlight_color >= 0 && highlighted_words_count > 0);
+
+	int cur_fg = -1;
+	int i = 0;
+	while(i < len){
+		int match_len = do_keywords ? find_keyword_match_at(title, total_len, (size_t)i) : 0;
+		if(match_len > 0){
+			int print_len = (i + match_len > len) ? (len - i) : match_len;
+			if(cur_fg != colorScheme->title_highlight_color){
+				cur_fg = colorScheme->title_highlight_color;
+				ui_printf("\e[38;5;%dm", cur_fg);
+			}
+			ui_printf("%.*s", print_len, title + i);
+			i += print_len;
+			continue;
+		}
+
+		int next_fg = (i < prefix_len) ? colorScheme->title_prefix_color : base_fg;
+		if(cur_fg != next_fg){
+			cur_fg = next_fg;
+			ui_printf("\e[38;5;%dm", cur_fg);
+		}
+		int run_start = i;
+		i++;
+		while(i < len){
+			int fg_here = (i < prefix_len) ? colorScheme->title_prefix_color : base_fg;
+			if(fg_here != next_fg) break;
+			if(do_keywords && find_keyword_match_at(title, total_len, (size_t)i) > 0) break;
+			i++;
+		}
+		ui_printf("%.*s", i - run_start, title + run_start);
+	}
+	if(cur_fg != base_fg){
+		ui_printf("\e[38;5;%dm", base_fg);
 	}
 }
 
@@ -365,7 +533,7 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 			ui_printf("\e[0K");
 		}
 		ui_printf("\e[108G"); // cursor pos 108 :: url
-		ui_printf("\e[27;38;5;%dm%c ",colorScheme->urlprefix,colorScheme->urlprefix_char);
+		ui_print_media_prefix(entry_item->url);
 		if(is_selected) ui_printf("\e[4m"); // underline open
 		ui_print_url(entry_item->url_nohttp ? entry_item->url_nohttp : entry_item->url, maxUrl);
 		if(is_selected) ui_printf("\e[24m"); // underline close
@@ -380,6 +548,7 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 			newline();
 			ui_printf("\e[2K");
 			ui_printf(" | ");
+			ui_print_media_prefix(entry_item->url);
 			ui_print_url(entry_item->url_nohttp ? entry_item->url_nohttp : entry_item->url, maxUrl);
 		}
 	}
@@ -475,9 +644,23 @@ int display_entries(short refresh){
 	int maxUrl = expanded_mode?winSZ[0]-112:winSZ[0]-3;
 	int title_maxlen = expanded_mode?94:winSZ[0]-4;
 	
+	time_t now = time(NULL);
+	int prev_bucket = get_prev_entry_bucket(huidig, now);
+	int rows_used = 0;
 	int i;
-	for(i=0;i < maxHeight;i++){		
+	for(i=0; rows_used < maxHeight; i++){		
+		if(colorScheme->date_separators_enabled){
+			int bucket = get_date_bucket(huidig->entry->published_at, now);
+			if(bucket > 0 && bucket > prev_bucket){
+				if(rows_used + 1 >= maxHeight && i > selected_tab->sel) break;
+				ui_print_date_separator(expanded_mode, get_date_bucket_label(bucket));
+				rows_used++;
+				prev_bucket = bucket;
+			}
+		}
+
 		the_entry_print(huidig->entry, expanded_mode, maxUrl, title_maxlen, i, refresh);
+		rows_used++;
 
 		if(selected_tab->tab_mode == TAB_GROUP){
 			g_member * nextInGroup = getNextGroupEntry(huidig->group_member, NEXT);

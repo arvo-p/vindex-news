@@ -510,10 +510,8 @@ int entry_view(entry * entry){
 	if(!entry) return 0;
 
 	char * url = entry->url;
-	short szUrl = strlen(url);
 	entry->seen = 1;
-	int is_video = (strstr(url, "youtube.com") || strstr(url, "youtu.be") ||
-					(szUrl >= 4 && strstr(url+szUrl-4, ".mp4")));
+	int is_video = is_video_url(url);
 
 #ifdef _WIN32
 	char cmd[1024];

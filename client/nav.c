@@ -52,34 +52,41 @@ int list_selector_move(int step){
 		return 1; // Hit lower limit
 	
 	int isWindowLarge = winSZ[0]>displayThreshold;
-	int diff = isWindowLarge?(selected_tab->sel)+8+step-winSZ[1]:(selected_tab->sel)+step+5-winSZ[1];
+	int maxRows = isWindowLarge ? (winSZ[1] - 8) : (winSZ[1] - 5);
+	if(maxRows < 1) maxRows = 1;
 
-	if(step > 0 && diff>=0){
-		int actual_steps = 0;
-		if (selected_tab->tab_mode == TAB_WEBFEEDS){
-			actual_steps = step;
-		} else {
-			for(int i=0;i<step;i++){
-				if(selected_tab->tab_mode == TAB_GROUP){
-					g_member * gNext = getNextGroupEntry(selected_tab->offset->group_member, NEXT);
-					if(gNext){
-						setGlobalEntry(selected_tab->offset, gNext->entry);
-						selected_tab->offset->group_member = gNext;
-						actual_steps++;
-					} else break;
-				}else{
-					entry * eNext = getNextEntry(selected_tab->offset, NEXT);
-					if(eNext){
-						setGlobalEntry(selected_tab->offset, eNext);
-						actual_steps++;
-					} else break;
+	if(step > 0){
+		int target_sel = selected_tab->sel + step;
+		if(selected_tab->tab_mode == TAB_WEBFEEDS){
+			if(target_sel >= maxRows){
+				selected_tab->line_offset += step;
+				selected_tab->sel = selected_tab->selPrevious;
+				return 0;
+			}
+		}else{
+			if(ui_count_rows_for_sel(selected_tab->offset, target_sel) > maxRows){
+				while(target_sel > 0 && ui_count_rows_for_sel(selected_tab->offset, target_sel) > maxRows){
+					if(selected_tab->tab_mode == TAB_GROUP){
+						g_member * gNext = getNextGroupEntry(selected_tab->offset->group_member, NEXT);
+						if(gNext){
+							setGlobalEntry(selected_tab->offset, gNext->entry);
+							selected_tab->offset->group_member = gNext;
+							selected_tab->line_offset++;
+							target_sel--;
+						}else break;
+					}else{
+						entry * eNext = getNextEntry(selected_tab->offset, NEXT);
+						if(eNext){
+							setGlobalEntry(selected_tab->offset, eNext);
+							selected_tab->line_offset++;
+							target_sel--;
+						}else break;
+					}
 				}
+				selected_tab->sel = target_sel;
+				return 0;
 			}
 		}
-		
-		selected_tab->line_offset+=actual_steps;
-		selected_tab->sel = selected_tab->selPrevious;
-		return 0;
 	}
 
 	if(step < 0 && selected_tab->sel+step < 0){

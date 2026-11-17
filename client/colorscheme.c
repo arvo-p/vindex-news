@@ -28,7 +28,12 @@ int setAppDefaultColorscheme(){
 	colorScheme->zebra_dot_color = 240;
 	colorScheme->title_sentence_case = 1;
 	colorScheme->title_prefix_color = 138;
-	colorScheme->title_prefix_maxlen = 24;
+	colorScheme->title_prefix_maxlen = 30;
+	colorScheme->title_highlight_color = 180;
+	colorScheme->media_video_color = 174;
+	colorScheme->media_pdf_color = 109;
+	colorScheme->date_separators_enabled = 1;
+	colorScheme->date_separators_color = 138;
 
 	colorScheme->urlprefix_char = '@';
 
@@ -220,6 +225,11 @@ int initColorscheme(){
 	getConfigValue("ui.title.sentence_case", &colorScheme->title_sentence_case, 'i');
 	getConfigValue("ui.title.prefix.color", &colorScheme->title_prefix_color, 'i');
 	getConfigValue("ui.title.prefix.maxlen", &colorScheme->title_prefix_maxlen, 'i');
+	getConfigValue("ui.title.highlight.color", &colorScheme->title_highlight_color, 'i');
+	getConfigValue("ui.media.video.color", &colorScheme->media_video_color, 'i');
+	getConfigValue("ui.media.pdf.color", &colorScheme->media_pdf_color, 'i');
+	getConfigValue("ui.date_separators.enabled", &colorScheme->date_separators_enabled, 'i');
+	getConfigValue("ui.date_separators.color", &colorScheme->date_separators_color, 'i');
 	
 	getConfigValue("ui.urlprefix.char", &colorScheme->urlprefix_char, 'c');
 

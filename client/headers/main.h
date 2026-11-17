@@ -39,6 +39,7 @@ typedef struct entry{
 	unsigned char downloaded:1;
 	unsigned char is_separator:1;
 	unsigned char bookmarked:1;
+	time_t published_at;
 	struct entry * next;
 	struct entry * previous;
 	void * child_el;

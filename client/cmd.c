@@ -28,6 +28,8 @@ int cmd_feed_add(int args_num, char **args, int helper);
 int cmd_feed_remove(int args_num, char **args, int helper);
 int cmd_feed_alias(int args_num, char **args, int helper);
 int cmd_feeds(int args_num, char **args, int helper);
+int cmd_highlight_add(int args_num, char **args, int helper);
+int cmd_highlight_remove(int args_num, char **args, int helper);
 
 CommandDef commands[] = {
 	{"group-open", "g", cmd_open_group},
@@ -40,6 +42,8 @@ CommandDef commands[] = {
 	{"feed-remove", "fr", cmd_feed_remove},
 	{"feed-alias", "fal", cmd_feed_alias},
 	{"feeds", "f", cmd_feeds},
+	{"highlight-add", "ha", cmd_highlight_add},
+	{"highlight-remove", "hr", cmd_highlight_remove},
 };
 
 void cmd_provide_suggestions(const char **options, int num_options, const char *typed){
@@ -546,6 +550,61 @@ int cmd_feeds(int args_num, char **args, int helper){
 	draw_update(true);
 	ui_flush();
 	return 0;
+}
+
+static void join_highlight_args(int args_num, char **args, char *out, size_t out_sz){
+	out[0] = '\0';
+	for(int i = 1; i < args_num; i++){
+		if(i > 1) strncat(out, " ", out_sz - strlen(out) - 1);
+		strncat(out, args[i], out_sz - strlen(out) - 1);
+	}
+}
+
+int cmd_highlight_add(int args_num, char **args, int helper){
+	if (helper) return 0;
+	if (args_num >= 2){
+		char keyword[64];
+		join_highlight_args(args_num, args, keyword, sizeof(keyword));
+		int res = Load->ModifyHighlighted(keyword, 1);
+		if (res == 0){
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Highlighted '%s' added!", keyword);
+		} else if (res == 2){
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Keyword '%s' already highlighted!", keyword);
+		} else {
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Error adding highlight keyword!");
+		}
+		draw_update(true);
+		return 0;
+	}
+	return 2;
+}
+
+int cmd_highlight_remove(int args_num, char **args, int helper){
+	if (helper){
+		if (args_num == 2){
+			const char *words[128];
+			for (int i = 0; i < highlighted_words_count; i++){
+				words[i] = highlighted_words[i];
+			}
+			cmd_provide_suggestions(words, highlighted_words_count, args[1]);
+		}
+		return 0;
+	}
+	if (args_num >= 2){
+		char keyword[64];
+		join_highlight_args(args_num, args, keyword, sizeof(keyword));
+		int res = Load->ModifyHighlighted(keyword, 2);
+		if (res == 0){
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Highlighted '%s' removed!", keyword);
+		} else if (res == 2){
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Keyword '%s' not found!", keyword);
+		} else {
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Error removing highlight keyword!");
+		}
+		draw_update(true);
+		return 0;
+	}
+	return 2;
 }
 
 int cmd_autocomplete(){

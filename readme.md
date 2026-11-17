@@ -82,8 +82,8 @@ https://news.ycombinator.com/rss [Tech,News]
 https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrdUwZs3IHrMcna1QG [Video]
 ```
 
-### 3. Blacklisting Content (`blacklisted.conf`)
-Filter out articles containing specific words or originating from certain URLs:
+### 3. Blacklisting & Highlighting Content (`blacklisted.conf` / `highlighted.conf`)
+Filter out articles containing specific words or originating from certain URLs in `blacklisted.conf`:
 ```text
 @blacklisted_urls
 clickbait-site.com
@@ -91,6 +91,13 @@ clickbait-site.com
 @blacklisted_words
 spoilers
 giveaway
+```
+
+Highlight watchlist keywords in unread titles by listing one keyword per line (case-insensitive) in `highlighted.conf`:
+```text
+CVE
+kernel
+RISC-V
 ```
 
 ### 4. Colorscheme (`colorschemes/latenight`)
@@ -115,6 +122,11 @@ Customize colors and display options in `<data_dir>/colorschemes/latenight` (e.g
 | `ui.title.sentence_case` | int | `1` | Convert Title Case / ALL-CAPS titles to sentence case on display (`1` or `0`) |
 | `ui.title.prefix.color` | int | `138` | Color for short unread prefixes before `": "` (`-1` to disable) |
 | `ui.title.prefix.maxlen` | int | `24` | Max character length for `": "` title prefix highlighting |
+| `ui.title.highlight.color` | int | `180` | Keyword watchlist highlight color in unread titles (`-1` to disable) |
+| `ui.media.video.color` | int | `174` | Video URL prefix (`▶`) color (`-1` to use default `@` prefix) |
+| `ui.media.pdf.color` | int | `109` | PDF URL prefix (`◈`) color (`-1` to use default `@` prefix) |
+| `ui.date_separators.enabled` | int | `1` | Show (`1`) or hide (`0`) relative date separator lines (`One Day ago`, `One week ago`, etc.) |
+| `ui.date_separators.color` | int | `138` | Date separator text foreground color |
 
 Example `latenight` file:
 ```ini
@@ -140,6 +152,11 @@ ui.zebra.dot.color=240
 ui.title.sentence_case=1
 ui.title.prefix.color=138
 ui.title.prefix.maxlen=24
+ui.title.highlight.color=180
+ui.media.video.color=174
+ui.media.pdf.color=109
+ui.date_separators.enabled=1
+ui.date_separators.color=138
 ```
 
 ### 5. Fetching Feeds
@@ -203,6 +220,10 @@ Press <kbd>:</kbd> while viewing the feed to open the prompt. The command line f
 - `:feed-alias <url_or_alias> <alias_name>` (Alias: `:fal`) — Gives a feed an easy-to-read name (e.g. `"De Nieuwe Wereld"`). Omit the second argument to remove the alias.
 
 *(Note: When viewing the `:feeds` tab, all Feed Management commands are context-aware. You can omit the `<url>` argument and the command will automatically apply to the feed currently highlighted by your cursor!)*
+
+### Highlight Management
+- `:highlight-add <word>` (Alias: `:ha`) — Adds a keyword to `highlighted.conf` and highlights matches in unread titles immediately.
+- `:highlight-remove <word>` (Alias: `:hr`) — Removes a keyword from `highlighted.conf` (supports `Tab` autocomplete).
 
 ### Command Keys
 - <kbd>Tab</kbd> — Autocompletes URLs, Aliases, and Group names dynamically.

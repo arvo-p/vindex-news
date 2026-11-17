@@ -23,7 +23,7 @@
 #include "headers/main.h"
 #include "headers/ui.h"
 
-char *pth_gConf, *pth_folder_colorscheme, *pth_Root, * pth_EntriesInfo, * pth_EntriesInfoMod, * pth_mainNews, * pth_Archive, *pth_Webfeeds;
+char *pth_gConf, *pth_folder_colorscheme, *pth_Root, * pth_EntriesInfo, * pth_EntriesInfoMod, * pth_mainNews, * pth_Archive, *pth_Webfeeds, *pth_Highlighted;
 
 int LOAD_GetEntries(enum LoadEntriesMode mode);
 int LOAD_GetInteractionInformation();
@@ -34,11 +34,16 @@ int LOAD_ReloadEntries();
 int LOAD_ModifyGroups(int groupid, const char * groupname, short action);
 int LOAD_ModifyWebfeeds(const char * target_url, const char * old_groupname, const char * new_groupname, short action);
 int LOAD_GetWebfeedsList();
+int LOAD_GetHighlightedWords();
+int LOAD_ModifyHighlighted(const char * word, short action);
 
 short homepageExcludedGroups[32];
 
 webfeed_info webfeeds_list[200];
 int webfeeds_count = 0;
+
+char highlighted_words[128][64];
+int highlighted_words_count = 0;
 
 int LOAD_INIT(struct PublicLoad * this){
 	int error = 0;
@@ -48,6 +53,7 @@ int LOAD_INIT(struct PublicLoad * this){
 	error += LOAD_GetWebfeedsList() << 3;
 	error += LOAD_GetEntries(NO_OFFSET) << 2;
 	error += LOAD_GetInteractionInformation() << 4;	
+	LOAD_GetHighlightedWords();
 
 	if(error != 0){
 		printf("LOAD_INIT ERROR %d", error);
@@ -58,12 +64,14 @@ int LOAD_INIT(struct PublicLoad * this){
 	this->UpdateInteractionInformation = &LOAD_UpdateInteractionInformation;
 	this->ModifyGroups = &LOAD_ModifyGroups;
 	this->ModifyWebfeeds = &LOAD_ModifyWebfeeds;
+	this->ModifyHighlighted = &LOAD_ModifyHighlighted;
 
 	return 0;
 }
 
 int LOAD_ReloadEntries(){
 	LOAD_GetEntries(OFFSET_LAST_ENTRY);
+	LOAD_GetHighlightedWords();
 	if(selected_tab->tab_mode == TAB_SIMPLE) setGlobalEntry(selected_tab->offset, initial_entry);
 	else if(selected_tab->tab_mode == TAB_GROUP && selected_tab->category && selected_tab->category->first_member){
 		selected_tab->offset->group_member = selected_tab->category->first_member;
@@ -148,10 +156,125 @@ int LOAD_GetFilepaths(){
 	pth_mainNews = pathAppend(pth_Root, file_news);
 	pth_gConf = pathAppend(pth_Root, file_gConf);
 	pth_Webfeeds = pathAppend(pth_Root, "webfeeds.conf");
+	pth_Highlighted = pathAppend(pth_Root, "highlighted.conf");
 	pth_Archive = pathAppend(pth_Root, folder_archive);
 	pth_folder_colorscheme = pathAppend(pth_Root, folder_colorscheme);
 
 	return 0;
+}
+
+int LOAD_GetHighlightedWords(){
+	highlighted_words_count = 0;
+	FILE *fin = fopen(pth_Highlighted, "rb");
+	if(!fin){
+		fin = fopen(pth_Highlighted, "wb");
+		if(fin) fclose(fin);
+		return 0;
+	}
+
+	char line[128];
+	while(fgets(line, sizeof(line), fin) && highlighted_words_count < 128){
+		size_t len = strlen(line);
+		while(len > 0 && (line[len-1] == '\n' || line[len-1] == '\r' || line[len-1] == ' ' || line[len-1] == '\t')){
+			line[--len] = 0;
+		}
+		char *start = line;
+		while(*start == ' ' || *start == '\t') start++;
+		if(*start == '\0' || *start == '#' || *start == '@') continue;
+
+		snprintf(highlighted_words[highlighted_words_count], sizeof(highlighted_words[0]), "%s", start);
+		highlighted_words_count++;
+	}
+	fclose(fin);
+	return 0;
+}
+
+int LOAD_ModifyHighlighted(const char * word, short action){
+	if(!word) return 1;
+
+	char trimmed[64];
+	snprintf(trimmed, sizeof(trimmed), "%s", word);
+	size_t tlen = strlen(trimmed);
+	while(tlen > 0 && (trimmed[tlen-1] == ' ' || trimmed[tlen-1] == '\t' || trimmed[tlen-1] == '\n' || trimmed[tlen-1] == '\r')){
+		trimmed[--tlen] = 0;
+	}
+	char *clean = trimmed;
+	while(*clean == ' ' || *clean == '\t') clean++;
+	if(*clean == '\0' || *clean == '#' || *clean == '@') return 1;
+
+	if(action == 1){ // Add
+		for(int i = 0; i < highlighted_words_count; i++){
+			if(_stricmp(highlighted_words[i], clean) == 0) return 2; // Already exists
+		}
+		if(highlighted_words_count >= 128) return 3;
+
+		int needs_newline = 0;
+		FILE *check = fopen(pth_Highlighted, "rb");
+		if(check){
+			if(fseek(check, 0, SEEK_END) == 0){
+				long sz = ftell(check);
+				if(sz > 0){
+					fseek(check, -1, SEEK_END);
+					int last = fgetc(check);
+					if(last != '\n') needs_newline = 1;
+				}
+			}
+			fclose(check);
+		}
+
+		FILE *fp = fopen(pth_Highlighted, "ab");
+		if(!fp) return 1;
+		if(needs_newline) fputc('\n', fp);
+		fprintf(fp, "%s\n", clean);
+		fclose(fp);
+		LOAD_GetHighlightedWords();
+		return 0;
+	}
+
+	if(action == 2){ // Remove
+		char tmp_path[1024];
+		snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", pth_Highlighted);
+
+		FILE *fin = fopen(pth_Highlighted, "rb");
+		if(!fin) return 1;
+		FILE *fout = fopen(tmp_path, "wb");
+		if(!fout){
+			fclose(fin);
+			return 1;
+		}
+
+		int found = 0;
+		char line[128];
+		while(fgets(line, sizeof(line), fin)){
+			char copy[128];
+			snprintf(copy, sizeof(copy), "%s", line);
+			size_t len = strlen(copy);
+			while(len > 0 && (copy[len-1] == '\n' || copy[len-1] == '\r' || copy[len-1] == ' ' || copy[len-1] == '\t')){
+				copy[--len] = 0;
+			}
+			char *start = copy;
+			while(*start == ' ' || *start == '\t') start++;
+
+			if(*start != '\0' && *start != '#' && *start != '@' && _stricmp(start, clean) == 0){
+				found = 1;
+				continue;
+			}
+			fputs(line, fout);
+		}
+		fclose(fin);
+		fclose(fout);
+
+		if(!found){
+			remove(tmp_path);
+			return 2;
+		}
+		remove(pth_Highlighted);
+		rename(tmp_path, pth_Highlighted);
+		LOAD_GetHighlightedWords();
+		return 0;
+	}
+
+	return 1;
 }
 
 int LOAD_GetWebfeedsList(){
@@ -343,9 +466,8 @@ int LOAD_GetEntry(char * line, entry * new_entry, entry ** previous_entry, int *
 	int j;
 	for(j=1;line[j];j++){
 		if(line[j-1]==31){
-			args[args_c]=&line[j];
+			if(args_c < 5) args[args_c++] = &line[j];
 			line[j-1] = 0;
-			args_c++;
 		}
 		if(line[j] == '\n' || line[j] == 0xd){
 			line[j] = 0;
@@ -484,6 +606,9 @@ int LOAD_GetEntry(char * line, entry * new_entry, entry ** previous_entry, int *
 	// Set other parameters, will be retrieved later
 	new_entry->seen = 0;
 	new_entry->downloaded = 0;
+	new_entry->published_at = (args_c >= 5 && args[4] && args[4][0])
+		? (time_t)strtoll(args[4], NULL, 10)
+		: 0;
 
 	//new_entry->next=NULL;
 	new_entry->previous=NULL;
