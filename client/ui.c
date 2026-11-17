@@ -250,24 +250,83 @@ static const char * strip_url_prefix(const char * url){
 	return url;
 }
 
+static int find_keyword_match_at(const char * title, size_t total_len, size_t pos);
+
+static const char * active_search_query(void){
+	if(selected_tab && selected_tab->search_query[0] && colorScheme->search_color >= 0){
+		return selected_tab->search_query;
+	}
+	return NULL;
+}
+
+static int find_search_match_at(const char * str, size_t total_len, size_t pos, const char * query, size_t qlen){
+	if(!query || qlen == 0 || pos + qlen > total_len) return 0;
+	return (strncasecmp(str + pos, query, qlen) == 0) ? (int)qlen : 0;
+}
+
+/* Render text split at split_idx (first_fg before, second_fg after), overriding search/keyword matches. */
+static void ui_print_segmented(const char * str, int len, int split_idx, int first_fg, int second_fg, int allow_keywords){
+	size_t total_len = strlen(str);
+	const char * search_q = active_search_query();
+	size_t qlen = search_q ? strlen(search_q) : 0;
+	int do_keywords = (allow_keywords && colorScheme->title_highlight_color >= 0 && highlighted_words_count > 0);
+
+	int cur_fg = -1;
+	int i = 0;
+	while(i < len){
+		int search_len = search_q ? find_search_match_at(str, total_len, (size_t)i, search_q, qlen) : 0;
+		if(search_len > 0){
+			int print_len = (i + search_len > len) ? (len - i) : search_len;
+			if(cur_fg != colorScheme->search_color){
+				cur_fg = colorScheme->search_color;
+				ui_printf("\e[38;5;%dm", cur_fg);
+			}
+			ui_printf("%.*s", print_len, str + i);
+			i += print_len;
+			continue;
+		}
+
+		int kw_len = do_keywords ? find_keyword_match_at(str, total_len, (size_t)i) : 0;
+		if(kw_len > 0){
+			int print_len = (i + kw_len > len) ? (len - i) : kw_len;
+			if(cur_fg != colorScheme->title_highlight_color){
+				cur_fg = colorScheme->title_highlight_color;
+				ui_printf("\e[38;5;%dm", cur_fg);
+			}
+			ui_printf("%.*s", print_len, str + i);
+			i += print_len;
+			continue;
+		}
+
+		int next_fg = (i < split_idx) ? first_fg : second_fg;
+		if(cur_fg != next_fg){
+			cur_fg = next_fg;
+			ui_printf("\e[38;5;%dm", cur_fg);
+		}
+		int run_start = i;
+		i++;
+		while(i < len){
+			int fg_here = (i < split_idx) ? first_fg : second_fg;
+			if(fg_here != next_fg) break;
+			if(search_q && find_search_match_at(str, total_len, (size_t)i, search_q, qlen) > 0) break;
+			if(do_keywords && find_keyword_match_at(str, total_len, (size_t)i) > 0) break;
+			i++;
+		}
+		ui_printf("%.*s", i - run_start, str + run_start);
+	}
+	if(cur_fg != second_fg){
+		ui_printf("\e[38;5;%dm", second_fg);
+	}
+}
+
 static int ui_print_url(const char * raw_url, int max_len){
 	if(max_len <= 0) return 0;
 	const char * p = strip_url_prefix(raw_url);
 	int total_len = (int)strlen(p);
+	int print_len = (total_len > max_len) ? max_len : total_len;
 	int domain_len = (int)strcspn(p, "/?#");
-	if(domain_len > max_len) domain_len = max_len;
-
-	ui_printf("\e[38;5;%dm%.*s", colorScheme->url, domain_len, p);
-	int printed = domain_len;
-
-	if(domain_len < total_len && printed < max_len){
-		int rem = max_len - printed;
-		int path_len = total_len - domain_len;
-		if(path_len > rem) path_len = rem;
-		ui_printf("\e[38;5;%dm%.*s", colorScheme->url_path, path_len, p + domain_len);
-		printed += path_len;
-	}
-	return printed;
+	ui_print_segmented(p, print_len, domain_len, colorScheme->url, colorScheme->url_path, 0);
+	return print_len;
 }
 
 static void format_title_sentence_case(const char * src, char * dst, size_t dst_sz){
@@ -422,48 +481,8 @@ static int find_keyword_match_at(const char * title, size_t total_len, size_t po
 
 static void ui_print_title_text(const char * title, int len, int seen){
 	int base_fg = seen ? colorScheme->seen : colorScheme->entries;
-	if(seen){
-		ui_printf("\e[38;5;%dm%.*s", base_fg, len, title);
-		return;
-	}
-
-	size_t total_len = strlen(title);
-	int prefix_len = find_title_prefix_len(title);
-	int do_keywords = (colorScheme->title_highlight_color >= 0 && highlighted_words_count > 0);
-
-	int cur_fg = -1;
-	int i = 0;
-	while(i < len){
-		int match_len = do_keywords ? find_keyword_match_at(title, total_len, (size_t)i) : 0;
-		if(match_len > 0){
-			int print_len = (i + match_len > len) ? (len - i) : match_len;
-			if(cur_fg != colorScheme->title_highlight_color){
-				cur_fg = colorScheme->title_highlight_color;
-				ui_printf("\e[38;5;%dm", cur_fg);
-			}
-			ui_printf("%.*s", print_len, title + i);
-			i += print_len;
-			continue;
-		}
-
-		int next_fg = (i < prefix_len) ? colorScheme->title_prefix_color : base_fg;
-		if(cur_fg != next_fg){
-			cur_fg = next_fg;
-			ui_printf("\e[38;5;%dm", cur_fg);
-		}
-		int run_start = i;
-		i++;
-		while(i < len){
-			int fg_here = (i < prefix_len) ? colorScheme->title_prefix_color : base_fg;
-			if(fg_here != next_fg) break;
-			if(do_keywords && find_keyword_match_at(title, total_len, (size_t)i) > 0) break;
-			i++;
-		}
-		ui_printf("%.*s", i - run_start, title + run_start);
-	}
-	if(cur_fg != base_fg){
-		ui_printf("\e[38;5;%dm", base_fg);
-	}
+	int prefix_len = seen ? 0 : find_title_prefix_len(title);
+	ui_print_segmented(title, len, prefix_len, colorScheme->title_prefix_color, base_fg, !seen);
 }
 
 int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title_maxlen, int i, short refresh){
@@ -489,9 +508,11 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 	ui_printf("\e[2K");
 
 	if(expanded_mode){
+		if(entry_item->bookmarked) ui_printf("\e[38;5;%dm\e[3G\u2691", colorScheme->bookmark_color);
 		ui_printf("\e[38;5;%dm\e[%dG%s", colorScheme->ui_walls, 5, entry_item->is_separator ? "\u251C" : "\u2502");
 	} else {
-		if(entry_item->is_separator) ui_printf("\e[38;5;%dm\u2500", colorScheme->ui_walls);
+		if(entry_item->bookmarked) ui_printf("\e[38;5;%dm\u2691", colorScheme->bookmark_color);
+		else if(entry_item->is_separator) ui_printf("\e[38;5;%dm\u2500", colorScheme->ui_walls);
 		else ui_printf(" ");
 	}
 	if(zebra_bg >= 0) ui_printf("\e[48;5;%dm", zebra_bg);
@@ -515,7 +536,6 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 	if(shorted) ui_printf("...");
 		
 	if(entry_item->downloaded) ui_printf(" 🌠");
-	if(entry_item->bookmarked) ui_printf(" ⭐");
 
 	if(is_selected) ui_printf("\e[27m");
 	ui_printf("\e[0K");

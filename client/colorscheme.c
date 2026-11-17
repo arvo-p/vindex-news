@@ -30,8 +30,10 @@ int setAppDefaultColorscheme(){
 	colorScheme->title_prefix_color = 138;
 	colorScheme->title_prefix_maxlen = 30;
 	colorScheme->title_highlight_color = 180;
+	colorScheme->search_color = 222;
 	colorScheme->media_video_color = 174;
 	colorScheme->media_pdf_color = 109;
+	colorScheme->bookmark_color = 180;
 	colorScheme->date_separators_enabled = 1;
 	colorScheme->date_separators_color = 138;
 
@@ -226,8 +228,10 @@ int initColorscheme(){
 	getConfigValue("ui.title.prefix.color", &colorScheme->title_prefix_color, 'i');
 	getConfigValue("ui.title.prefix.maxlen", &colorScheme->title_prefix_maxlen, 'i');
 	getConfigValue("ui.title.highlight.color", &colorScheme->title_highlight_color, 'i');
+	getConfigValue("ui.search.color", &colorScheme->search_color, 'i');
 	getConfigValue("ui.media.video.color", &colorScheme->media_video_color, 'i');
 	getConfigValue("ui.media.pdf.color", &colorScheme->media_pdf_color, 'i');
+	getConfigValue("ui.bookmark.color", &colorScheme->bookmark_color, 'i');
 	getConfigValue("ui.date_separators.enabled", &colorScheme->date_separators_enabled, 'i');
 	getConfigValue("ui.date_separators.color", &colorScheme->date_separators_color, 'i');
 	

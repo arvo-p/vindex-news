@@ -123,8 +123,10 @@ Customize colors and display options in `<data_dir>/colorschemes/latenight` (e.g
 | `ui.title.prefix.color` | int | `138` | Color for short unread prefixes before `": "` (`-1` to disable) |
 | `ui.title.prefix.maxlen` | int | `24` | Max character length for `": "` title prefix highlighting |
 | `ui.title.highlight.color` | int | `180` | Keyword watchlist highlight color in unread titles (`-1` to disable) |
+| `ui.search.color` | int | `222` | Search match highlight color in `/` search tabs (`-1` to disable) |
 | `ui.media.video.color` | int | `174` | Video URL prefix (`▶`) color (`-1` to use default `@` prefix) |
 | `ui.media.pdf.color` | int | `109` | PDF URL prefix (`◈`) color (`-1` to use default `@` prefix) |
+| `ui.bookmark.color` | int | `180` | Left-gutter bookmark flag (`⚑`) foreground color |
 | `ui.date_separators.enabled` | int | `1` | Show (`1`) or hide (`0`) relative date separator lines (`One Day ago`, `One week ago`, etc.) |
 | `ui.date_separators.color` | int | `138` | Date separator text foreground color |
 
@@ -153,8 +155,10 @@ ui.title.sentence_case=1
 ui.title.prefix.color=138
 ui.title.prefix.maxlen=24
 ui.title.highlight.color=180
+ui.search.color=222
 ui.media.video.color=174
 ui.media.pdf.color=109
+ui.bookmark.color=180
 ui.date_separators.enabled=1
 ui.date_separators.color=138
 ```
@@ -196,6 +200,7 @@ Run `vindex` (or `vindex.exe`) to open the terminal reader:
   - All other links launch in the default browser.
   - The entry is marked as seen in `int.dat`.
 - <kbd>r</kbd> — Reload and refresh list from the database.
+- <kbd>/</kbd> — Search entries in the current tab (opens matching results in a new tab).
 - <kbd>:</kbd> — Enter **Command Mode** (see below).
 - <kbd>Q</kbd> — Save and quit the reader safely.
 

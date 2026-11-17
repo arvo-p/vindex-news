@@ -30,6 +30,13 @@ tab * tabs_newtab(char * title, entry * offset, int tab_mode){
 
 	int i=0;
 	while(i < 16 && tabs[i] != 0) i++;
+	if(i >= 16){
+		free(new_tab->working);
+		free(new_tab->offset);
+		free(new_tab->old_entry);
+		free(new_tab);
+		return NULL;
+	}
 	new_tab->tab_index = i;
 	tabs[i] = new_tab;
 
@@ -80,7 +87,8 @@ void tabs_close(tab * target){
 		if(target == selected_tab) selected_tab = tabs[tabIndex];	
 	}
 
-	if (target->tab_mode == TAB_GROUP && target->category && strncmp(target->category->name, "Favs:", 5) == 0) {
+	if (target->tab_mode == TAB_GROUP && target->category &&
+		(strncmp(target->category->name, "Favs:", 5) == 0 || target->category->name[0] == '/')) {
 		g_member * mem = target->category->first_member;
 		while (mem) {
 			g_member * next = mem->next;

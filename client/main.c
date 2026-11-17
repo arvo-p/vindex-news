@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include <pthread.h>
 #include <time.h>
 
@@ -41,6 +42,112 @@ int display_mode = 1;
 int server_is_running = 0;
 
 int entry_view(entry * entry);
+
+static int contains_icase(const char * haystack, const char * needle){
+	if(!haystack || !needle || !*needle) return 0;
+	size_t nlen = strlen(needle);
+	for(const char * p = haystack; *p; p++){
+		size_t j = 0;
+		while(j < nlen && p[j] && tolower((unsigned char)p[j]) == tolower((unsigned char)needle[j])){
+			j++;
+		}
+		if(j == nlen) return 1;
+	}
+	return 0;
+}
+
+static int is_entry_bookmarked(const entry * e, void * ctx){
+	(void)ctx;
+	return e->bookmarked;
+}
+
+static int is_entry_matching_query(const entry * e, void * ctx){
+	const char * query = (const char *)ctx;
+	return contains_icase(e->title, query) || contains_icase(e->url, query);
+}
+
+static void free_temp_group(cat_group * grp){
+	if(!grp) return;
+	g_member * mem = grp->first_member;
+	while(mem){
+		g_member * nxt = mem->next;
+		free(mem);
+		mem = nxt;
+	}
+	free(grp);
+}
+
+/* Filter entries from the current tab into a new TAB_GROUP tab. Returns 1 if opened. */
+static int open_filtered_tab(const char * tab_title, int (*predicate)(const entry *, void *), void * ctx, const char * empty_msg){
+	if(selected_tab->tab_mode == TAB_WEBFEEDS) return 0;
+
+	cat_group * filtered_group = calloc(1, sizeof(cat_group));
+	if(!filtered_group) return 0;
+	snprintf(filtered_group->name, sizeof(filtered_group->name), "%s", tab_title);
+
+	global_e iter;
+	iter.entry = NULL; iter.child = NULL; iter.parent = NULL; iter.group_member = NULL;
+
+	if(selected_tab->tab_mode == TAB_SIMPLE){
+		setGlobalEntry(&iter, initial_entry);
+	}else if(selected_tab->tab_mode == TAB_GROUP){
+		if(selected_tab->category && selected_tab->category->first_member){
+			iter.group_member = selected_tab->category->first_member;
+			setGlobalEntry(&iter, selected_tab->category->first_member->entry);
+		}
+	}else if(selected_tab->tab_mode == TAB_URLBASE){
+		if(selected_tab->offset->parent && selected_tab->offset->parent->first_child){
+			child_entry * first = (child_entry *)selected_tab->offset->parent->first_child;
+			iter.child = first;
+			setGlobalEntry(&iter, first->entry);
+		}
+	}
+
+	g_member * last_member = NULL;
+	while(iter.entry != NULL){
+		if(predicate(iter.entry, ctx)){
+			g_member * new_mem = calloc(1, sizeof(g_member));
+			new_mem->entry = iter.entry;
+			if(!filtered_group->first_member){
+				filtered_group->first_member = new_mem;
+			}else{
+				last_member->next = new_mem;
+				new_mem->previous = last_member;
+			}
+			last_member = new_mem;
+			filtered_group->count++;
+		}
+
+		if(selected_tab->tab_mode == TAB_GROUP){
+			g_member * nxt = getNextGroupEntry(iter.group_member, 0);
+			if(!nxt) break;
+			iter.entry = nxt->entry;
+			iter.group_member = nxt;
+		}else{
+			if(setGlobalEntry(&iter, getNextEntry(&iter, 0))) break;
+		}
+	}
+
+	if(filtered_group->count > 0){
+		tab * ntab = tabs_newtab((char *)tab_title, filtered_group->first_member->entry, TAB_GROUP);
+		if(!ntab){
+			free_temp_group(filtered_group);
+			snprintf(statusbar_notify, sizeof(statusbar_notify), "Maximum tab limit reached.");
+			draw_statusbar();
+			return 0;
+		}
+		ntab->category = filtered_group;
+		ntab->offset->group_member = filtered_group->first_member;
+		selected_tab = ntab;
+		tabs_updateDisplayMode(selected_tab);
+		return 1;
+	}
+
+	free_temp_group(filtered_group);
+	snprintf(statusbar_notify, sizeof(statusbar_notify), "%s", empty_msg);
+	draw_statusbar();
+	return 0;
+}
 
 enum SpecialKey {
 	KEY_SPECIAL_NONE = 0,
@@ -330,12 +437,24 @@ int main(int argc, char * argv[]){
 		}
 	
 		if(cmd_mode){
+			int is_search = (cmd_buffer[0] == '/');
 			switch(input){
 				case 13:
 					exit_command_mode();
 					cHelper = NULL;
-					if(run_cmd(0)!=0) draw_cError();
-					memset(cmd_buffer, 0, cmd_count);
+					if(is_search){
+						if(cmd_count > 1){
+							char tab_title[128];
+							snprintf(tab_title, sizeof(tab_title), "/%.19s", cmd_buffer + 1);
+							redraw = open_filtered_tab(tab_title, is_entry_matching_query, cmd_buffer + 1, "No matches found.");
+							if(redraw){
+								snprintf(selected_tab->search_query, sizeof(selected_tab->search_query), "%s", cmd_buffer + 1);
+							}
+						}
+					}else{
+						if(run_cmd(0)!=0) draw_cError();
+					}
+					memset(cmd_buffer, 0, sizeof(cmd_buffer));
 					cmd_count = 0;
 					cHelper_selected_cmd = 0;
 					break;
@@ -343,16 +462,18 @@ int main(int argc, char * argv[]){
 					if(cmd_count>0) cmd_buffer[--cmd_count] = 0;
 					if(cmd_count == 0) exit_command_mode();
 					cHelper_selected_cmd = 0;
-					if(!cHelper){
-						if (!kbhit_pending()) run_cmd(1);
-					} else if(cHelper_len) cHelper_len--;
-					else cHelper = NULL;
+					if(!is_search){
+						if(!cHelper){
+							if (!kbhit_pending()) run_cmd(1);
+						} else if(cHelper_len) cHelper_len--;
+						else cHelper = NULL;
+					}
 					break;
 				case 9:
-					cmd_autocomplete();
+					if(!is_search) cmd_autocomplete();
 					break;
 				default:
-					if(cmd_count < 100) cmd_buffer[cmd_count++] = input;
+					if(cmd_count < (int)sizeof(cmd_buffer) - 1) cmd_buffer[cmd_count++] = input;
 					cHelper_selected_cmd = 0;
 					break;
 			}
@@ -360,10 +481,10 @@ int main(int argc, char * argv[]){
 			// If characters are pasting in quickly, just buffer them and skip expensive renders/autocomplete until they finish!
 			if(cmd_mode && kbhit_pending()) continue; 
 			
-			if (cmd_mode) run_cmd(1);
+			if (cmd_mode && !is_search) run_cmd(1);
 			if(!cmd_mode) printf("\e[?25h"); //visible cursor
 			
-			draw_update(false);	
+			draw_update(redraw);	
 			g_pressed = 0;
 			continue;
 		}
@@ -402,64 +523,10 @@ int main(int argc, char * argv[]){
 				break;
 			case 'F':
 				if (selected_tab->tab_mode != TAB_WEBFEEDS && strncmp(selected_tab->title, "Favs:", 5) != 0) {
-					cat_group * fav_group = calloc(1, sizeof(cat_group));
-					snprintf(fav_group->name, sizeof(fav_group->name), "Favs: %.13s", selected_tab->title);
-					
-					global_e iter;
-					iter.entry = NULL; iter.child = NULL; iter.parent = NULL; iter.group_member = NULL;
-					
-					// Setup iterator start
-					if (selected_tab->tab_mode == TAB_SIMPLE) {
-						setGlobalEntry(&iter, initial_entry);
-					} else if (selected_tab->tab_mode == TAB_GROUP) {
-						if(selected_tab->category && selected_tab->category->first_member){
-							iter.group_member = selected_tab->category->first_member;
-							setGlobalEntry(&iter, selected_tab->category->first_member->entry);
-						}
-					} else if (selected_tab->tab_mode == TAB_URLBASE) {
-						if(selected_tab->offset->parent && selected_tab->offset->parent->first_child){
-							child_entry * first = (child_entry *)selected_tab->offset->parent->first_child;
-							iter.child = first;
-							setGlobalEntry(&iter, first->entry);
-						}
-					}
-
-					g_member * last_member = NULL;
-					while (iter.entry != NULL) {
-						if (iter.entry->bookmarked) {
-							g_member * new_mem = calloc(1, sizeof(g_member));
-							new_mem->entry = iter.entry;
-							if (!fav_group->first_member) {
-								fav_group->first_member = new_mem;
-							} else {
-								last_member->next = new_mem;
-								new_mem->previous = last_member;
-							}
-							last_member = new_mem;
-							fav_group->count++;
-						}
-						
-						if (selected_tab->tab_mode == TAB_GROUP) {
-							g_member * nxt = getNextGroupEntry(iter.group_member, 0);
-							if (!nxt) break;
-							iter.entry = nxt->entry;
-							iter.group_member = nxt;
-						} else {
-							if (setGlobalEntry(&iter, getNextEntry(&iter, 0))) break;
-						}
-					}
-					
-					if (fav_group->count > 0) {
-						tab * ntab = tabs_newtab(fav_group->name, fav_group->first_member->entry, TAB_GROUP);
-						ntab->category = fav_group;
-						ntab->offset->group_member = fav_group->first_member;
-						selected_tab = ntab;
-						tabs_updateDisplayMode(selected_tab);
+					char fav_title[21];
+					snprintf(fav_title, sizeof(fav_title), "Favs: %.13s", selected_tab->title);
+					if (open_filtered_tab(fav_title, is_entry_bookmarked, NULL, "No favorites found in this view.")) {
 						redraw = true;
-					} else {
-						free(fav_group);
-						strncpy(statusbar_notify, "No favorites found in this view.", 255);
-						draw_statusbar();
 					}
 				}
 				break;
@@ -493,6 +560,13 @@ int main(int argc, char * argv[]){
 				cmd_buffer[cmd_count++] = ':';
 				cmd_mode = 1;
 				printf("\e[?25h");
+				break;
+			case '/':
+				if(selected_tab->tab_mode != TAB_WEBFEEDS){
+					cmd_buffer[cmd_count++] = '/';
+					cmd_mode = 1;
+					printf("\e[?25h");
+				}
 				break;
 			case 'Q':
 #ifdef _WIN32

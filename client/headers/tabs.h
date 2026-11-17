@@ -5,6 +5,7 @@
 
 typedef struct tab{
 	char title[128];
+	char search_query[100];
 	global_e * working;
 	global_e * offset;
 	global_e * old_entry;
