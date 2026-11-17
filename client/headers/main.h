@@ -1,6 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include <time.h>
 #include "public.h"
 
 #define TAB_URLBASE 1

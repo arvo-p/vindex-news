@@ -26,6 +26,9 @@ int setAppDefaultColorscheme(){
 	colorScheme->zebra_odd_color = 234;
 	colorScheme->zebra_dot_enabled = 0;
 	colorScheme->zebra_dot_color = 240;
+	colorScheme->title_sentence_case = 1;
+	colorScheme->title_prefix_color = 138;
+	colorScheme->title_prefix_maxlen = 24;
 
 	colorScheme->urlprefix_char = '@';
 
@@ -214,6 +217,9 @@ int initColorscheme(){
 	getConfigValue("ui.zebra.odd.color", &colorScheme->zebra_odd_color, 'i');
 	getConfigValue("ui.zebra.dot.enabled", &colorScheme->zebra_dot_enabled, 'i');
 	getConfigValue("ui.zebra.dot.color", &colorScheme->zebra_dot_color, 'i');
+	getConfigValue("ui.title.sentence_case", &colorScheme->title_sentence_case, 'i');
+	getConfigValue("ui.title.prefix.color", &colorScheme->title_prefix_color, 'i');
+	getConfigValue("ui.title.prefix.maxlen", &colorScheme->title_prefix_maxlen, 'i');
 	
 	getConfigValue("ui.urlprefix.char", &colorScheme->urlprefix_char, 'c');
 

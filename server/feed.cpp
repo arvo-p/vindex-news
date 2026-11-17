@@ -40,15 +40,14 @@ int feed::Close(){
 
 int feed::SaveEntry(Entry &entry){
 	uint8_t unit_separator = 31;
-	newsOutputStream << std::hex << entry.id << unit_separator << entry.title << unit_separator << entry.link;
+	newsOutputStream << std::hex << entry.id << std::dec << unit_separator << entry.title << unit_separator << entry.link << unit_separator;
 	
 	int sz = entry.rssUrl.groups.size();
 	for(int i=0;i<sz;i++){
-		if(i == 0) newsOutputStream << unit_separator;
-		else newsOutputStream << " ";
+		if(i > 0) newsOutputStream << " ";
 		newsOutputStream << entry.rssUrl.groups[i];
 	}
-	newsOutputStream << endl;
+	newsOutputStream << unit_separator << static_cast<long long>(entry.timestamp) << endl;
 	return 0;
 }
 

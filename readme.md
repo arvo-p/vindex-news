@@ -93,7 +93,56 @@ spoilers
 giveaway
 ```
 
-### 4. Fetching Feeds
+### 4. Colorscheme (`colorschemes/latenight`)
+Customize colors and display options in `<data_dir>/colorschemes/latenight` (e.g., `~/.local/share/vindex/colorschemes/latenight` on Linux or `%APPDATA%\vindex\colorschemes\latenight` on Windows). Integer color values use xterm-256 palette indices (`0`–`255`), and background colors accept `-1` for the terminal's default/transparent background:
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ui.background.color` | int | `233` | Global UI background color (`-1` for terminal default) |
+| `ui.entries.color` | int | `250` | Unread entry title foreground color |
+| `ui.seen.color` | int | `239` | Seen entry title foreground color |
+| `ui.url.color` | int | `244` | URL domain foreground color |
+| `ui.url.path.color` | int | `239` | URL path/query foreground color |
+| `ui.urlprefix.color` | int | `182` | URL prefix symbol foreground color |
+| `ui.urlprefix.char` | char | `@` | Character shown before each URL |
+| `ui.walls.color` | int | `138` | Box border and separator color |
+| `ui.entries_nav.color` | int | `138` | Entry index counter (`current\total`) color |
+| `ui.zebra.enabled` | int | `1` | Enable (`1`) or disable (`0`) title background striping |
+| `ui.zebra.even.color` | int | `233` | Even-row title background color (`-1` for default) |
+| `ui.zebra.odd.color` | int | `234` | Odd-row title background color (`-1` for default; `ui.zebra.color` is an alias) |
+| `ui.zebra.dot.enabled` | int | `0` | Enable (`1`) or disable (`0`) alternating `·` marker before titles |
+| `ui.zebra.dot.color` | int | `240` | Alternating `·` marker foreground color |
+| `ui.title.sentence_case` | int | `1` | Convert Title Case / ALL-CAPS titles to sentence case on display (`1` or `0`) |
+| `ui.title.prefix.color` | int | `138` | Color for short unread prefixes before `": "` (`-1` to disable) |
+| `ui.title.prefix.maxlen` | int | `24` | Max character length for `": "` title prefix highlighting |
+
+Example `latenight` file:
+```ini
+@theme:Late Night
+
+ui.urlprefix.char=@
+
+ui.background.color=233
+ui.entries.color=250
+ui.url.color=244
+ui.url.path.color=239
+ui.seen.color=239
+
+ui.entries_nav.color=138
+ui.walls.color=138
+ui.urlprefix.color=182
+
+ui.zebra.enabled=1
+ui.zebra.even.color=233
+ui.zebra.odd.color=234
+ui.zebra.dot.enabled=0
+ui.zebra.dot.color=240
+ui.title.sentence_case=1
+ui.title.prefix.color=138
+ui.title.prefix.maxlen=24
+```
+
+### 5. Fetching Feeds
 Run the parser executable to fetch the newest articles:
 ```sh
 ./server/vindexServer   # or vindexServer.exe on Windows
@@ -101,7 +150,7 @@ Run the parser executable to fetch the newest articles:
 This will parse the feeds, check them against the blacklist, sort them by publication date, and append them to `entries.dat`.
 *To test a local feed configuration file:* `vindexServer test example.atom`.
 
-### 5. Launching the Reader
+### 6. Launching the Reader
 Run `vindex` (or `vindex.exe`) to open the terminal reader:
 ```sh
 ./client/vindex         # or vindex.exe on Windows

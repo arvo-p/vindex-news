@@ -17,6 +17,9 @@ typedef struct colorscheme{
 	int zebra_odd_color;
 	int zebra_dot_enabled;
 	int zebra_dot_color;
+	int title_sentence_case;
+	int title_prefix_color;
+	int title_prefix_maxlen;
 	char urlprefix_char;
 } colorscheme;
 

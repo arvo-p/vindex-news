@@ -185,13 +185,133 @@ static int ui_print_url(const char * raw_url, int max_len){
 	return printed;
 }
 
+static void format_title_sentence_case(const char * src, char * dst, size_t dst_sz){
+	if(dst_sz == 0) return;
+	snprintf(dst, dst_sz, "%s", src ? src : "");
+	if(!src || !*src) return;
+
+	int total_letters = 0;
+	int total_upper = 0;
+	int alpha_words = 0;
+	int in_word = 0;
+	for(size_t i = 0; dst[i]; i++){
+		unsigned char c = (unsigned char)dst[i];
+		int is_alpha = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+		if(is_alpha){
+			total_letters++;
+			if(c >= 'A' && c <= 'Z') total_upper++;
+			if(!in_word){
+				alpha_words++;
+				in_word = 1;
+			}
+		}else if(!(c >= '0' && c <= '9')){
+			in_word = 0;
+		}
+	}
+
+	int is_shouting = (alpha_words >= 3 && total_letters > 0 && (total_upper * 100 / total_letters) >= 80 && total_upper == total_letters);
+	int seen_first_letter = 0;
+
+	size_t i = 0;
+	while(dst[i]){
+		unsigned char c = (unsigned char)dst[i];
+		int is_alnum = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+		if(!is_alnum){
+			i++;
+			continue;
+		}
+
+		size_t start = i;
+		int has_digit = 0;
+		int up_cnt = 0;
+		int lo_cnt = 0;
+		int has_internal_upper = 0;
+		while(dst[i]){
+			unsigned char wc = (unsigned char)dst[i];
+			if(wc >= '0' && wc <= '9'){
+				has_digit = 1;
+			}else if(wc >= 'A' && wc <= 'Z'){
+				up_cnt++;
+				if(i > start) has_internal_upper = 1;
+			}else if(wc >= 'a' && wc <= 'z'){
+				lo_cnt++;
+			}else{
+				break;
+			}
+			i++;
+		}
+		size_t wlen = i - start;
+
+		if(has_digit || wlen == 0){
+			if(wlen > 0) seen_first_letter = 1;
+			continue;
+		}
+
+		if(!seen_first_letter){
+			seen_first_letter = 1;
+			if(is_shouting){
+				for(size_t j = start + 1; j < i; j++){
+					if(dst[j] >= 'A' && dst[j] <= 'Z') dst[j] = (char)(dst[j] + ('a' - 'A'));
+				}
+			}
+			continue;
+		}
+
+		/* Preserve standalone "I" and contractions like "I'm". */
+		if(wlen == 1 && dst[start] == 'I') continue;
+
+		/* Preserve mixed-case identifiers (e.g. IoT, JavaScript, GitHub, iOS) unless shouting. */
+		if(!is_shouting && has_internal_upper && lo_cnt > 0) continue;
+
+		/* Preserve short all-caps acronyms (e.g. AI, HN, CSS, NSA) unless shouting. */
+		if(!is_shouting && up_cnt == (int)wlen && wlen <= 5) continue;
+
+		if(is_shouting || (up_cnt >= 1 && lo_cnt > 0) || (up_cnt == (int)wlen && wlen > 5)){
+			for(size_t j = start; j < i; j++){
+				if(dst[j] >= 'A' && dst[j] <= 'Z') dst[j] = (char)(dst[j] + ('a' - 'A'));
+			}
+		}
+	}
+}
+
+static int find_title_prefix_len(const char * title){
+	if(!title || colorScheme->title_prefix_color < 0 || colorScheme->title_prefix_maxlen <= 0) return 0;
+	for(int i = 0; title[i] && i < colorScheme->title_prefix_maxlen; i++){
+		if(title[i] == ':' && title[i + 1] == ' ' && i > 0){
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+static void ui_print_title_text(const char * title, int len, int seen){
+	int base_fg = seen ? colorScheme->seen : colorScheme->entries;
+	int prefix_len = seen ? 0 : find_title_prefix_len(title);
+	if(prefix_len > 0){
+		if(prefix_len > len) prefix_len = len;
+		ui_printf("\e[38;5;%dm%.*s", colorScheme->title_prefix_color, prefix_len, title);
+		if(len > prefix_len){
+			ui_printf("\e[38;5;%dm%.*s", base_fg, len - prefix_len, title + prefix_len);
+		}
+	}else{
+		ui_printf("\e[38;5;%dm%.*s", base_fg, len, title);
+	}
+}
+
 int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title_maxlen, int i, short refresh){
 	int shorted = 0;
 	int is_selected = (i == selected_tab->sel);
 	int zebra_bg = get_row_zebra_bg(i);
 	int zebra_dot = should_zebra_dot(i);
+
+	char formatted_title[sizeof(entry_item->title)];
+	const char * title_ptr = entry_item->title;
+	if(colorScheme->title_sentence_case){
+		format_title_sentence_case(entry_item->title, formatted_title, sizeof(formatted_title));
+		title_ptr = formatted_title;
+	}
 	
-	int len = strlen(entry_item->title);
+	int len = strlen(title_ptr);
 	if(len>=title_maxlen){
 		len = title_maxlen-1;
 		shorted = 1;
@@ -223,7 +343,7 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 		ui_printf("\e[7m");
 	}
 
-	ui_printf("%.*s",len,entry_item->title);
+	ui_print_title_text(title_ptr, len, entry_item->seen);
 	if(shorted) ui_printf("...");
 		
 	if(entry_item->downloaded) ui_printf(" 🌠");
@@ -234,7 +354,11 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 
 	if(expanded_mode){
 		ui_printf("\e[7G"); // cursor pos 7 :: title
-		if(is_selected && shorted) ui_printf("\e[38;5;%d;7m%s \e[27m", colorScheme->entries, entry_item->title); 
+		if(is_selected && shorted){
+			ui_printf("\e[7m");
+			ui_print_title_text(title_ptr, (int)strlen(title_ptr), entry_item->seen);
+			ui_printf(" \e[27m");
+		} 
 		if(zebra_bg >= 0){
 			ui_printf("\e[107G");
 			ui_apply_bg();
