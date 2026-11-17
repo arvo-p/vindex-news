@@ -1,6 +1,6 @@
 # Vindex
 
-![Capture](Images/capture.PNG)
+![Capture](Images/capture.JPG)
 
 **Vindex** is my minimalist, keyboard-driven terminal feed reader. It features a fast C-based client (`vindex` / `vindex.exe`) with tabbed browsing and a C++ feed fetcher (`vindexServer` / `vindexServer.exe`) that uses `libcurl` and `rapidxml` to parse RSS and Atom feeds.
 
