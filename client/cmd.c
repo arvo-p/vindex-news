@@ -584,7 +584,6 @@ int cmd_autocomplete(){
 }
 
 void exit_command_mode(){
-	printf("\e[%d;0H", winSZ[1]);
-	printf("\e[2K");
+	ClearLastLine();
 	cmd_mode = 0;
 }

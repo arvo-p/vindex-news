@@ -114,7 +114,7 @@ int LOAD_GetFilepaths(){
 	char * file_gConf = "user_groups.conf";
 	char * file_news = "entries.dat";
 	char * folder_archive = "archive" PATH_SEP_STR;
-	char * folder_colorscheme = "colorscheme" PATH_SEP_STR;
+	char * folder_colorscheme = "colorschemes" PATH_SEP_STR;
 
 #ifdef _WIN32
 	char pth_Appdata[MAX_PATH];

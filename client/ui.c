@@ -129,8 +129,67 @@ int display_urltree(){
 	return 0;
 }
 
+static void ui_apply_bg(void){
+	if(colorScheme->background >= 0){
+		ui_printf("\e[48;5;%dm", colorScheme->background);
+	}else{
+		ui_printf("\e[49m");
+	}
+}
+
+static void ui_reset_with_bg(void){
+	ui_printf("\e[0m");
+	ui_apply_bg();
+}
+
+static int is_zebra_odd_row(int row_idx){
+	return ((row_idx + selected_tab->line_offset) % 2 == 1);
+}
+
+static int get_row_zebra_bg(int row_idx){
+	if(!colorScheme->zebra_enabled) return -1;
+	return is_zebra_odd_row(row_idx)
+		? colorScheme->zebra_odd_color
+		: colorScheme->zebra_even_color;
+}
+
+static int should_zebra_dot(int row_idx){
+	return (colorScheme->zebra_dot_enabled && is_zebra_odd_row(row_idx));
+}
+
+static const char * strip_url_prefix(const char * url){
+	if(!url) return "";
+	if(strncmp(url, "https://", 8) == 0) url += 8;
+	else if(strncmp(url, "http://", 7) == 0) url += 7;
+	if(strncmp(url, "www.", 4) == 0) url += 4;
+	return url;
+}
+
+static int ui_print_url(const char * raw_url, int max_len){
+	if(max_len <= 0) return 0;
+	const char * p = strip_url_prefix(raw_url);
+	int total_len = (int)strlen(p);
+	int domain_len = (int)strcspn(p, "/?#");
+	if(domain_len > max_len) domain_len = max_len;
+
+	ui_printf("\e[38;5;%dm%.*s", colorScheme->url, domain_len, p);
+	int printed = domain_len;
+
+	if(domain_len < total_len && printed < max_len){
+		int rem = max_len - printed;
+		int path_len = total_len - domain_len;
+		if(path_len > rem) path_len = rem;
+		ui_printf("\e[38;5;%dm%.*s", colorScheme->url_path, path_len, p + domain_len);
+		printed += path_len;
+	}
+	return printed;
+}
+
 int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title_maxlen, int i, short refresh){
 	int shorted = 0;
+	int is_selected = (i == selected_tab->sel);
+	int zebra_bg = get_row_zebra_bg(i);
+	int zebra_dot = should_zebra_dot(i);
 	
 	int len = strlen(entry_item->title);
 	if(len>=title_maxlen){
@@ -138,52 +197,69 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 		shorted = 1;
 	}
 
+	ui_reset_with_bg();
+	ui_printf("\e[2K");
+
 	if(expanded_mode){
-		if(entry_item->is_separator){
-			ui_printf("\e[38;5;%dm\e[%dG\u251C\u2500", colorScheme->ui_walls, 5);
-		} else {
-			ui_printf("\e[38;5;%dm\e[%dG\u2502 ", colorScheme->ui_walls, 5);
-		}
+		ui_printf("\e[38;5;%dm\e[%dG%s", colorScheme->ui_walls, 5, entry_item->is_separator ? "\u251C" : "\u2502");
 	} else {
-		if(entry_item->is_separator){
-			ui_printf("\e[38;5;%dm\u2500\u2500", colorScheme->ui_walls);
-		} else {
-			ui_printf("  ");
-		}
+		if(entry_item->is_separator) ui_printf("\e[38;5;%dm\u2500", colorScheme->ui_walls);
+		else ui_printf(" ");
+	}
+	if(zebra_bg >= 0) ui_printf("\e[48;5;%dm", zebra_bg);
+	if(entry_item->is_separator){
+		ui_printf("\u2500");
+	} else if(zebra_dot){
+		ui_printf("\e[38;5;%dm\u00B7", colorScheme->zebra_dot_color);
+	} else {
+		ui_printf(" ");
 	}
 
-	if(entry_item->seen) ui_printf("\e[0;38;5;%dm",colorScheme->seen);
-	else ui_printf("\e[0;38;5;%dm", colorScheme->entries);
+	if(entry_item->seen) ui_printf("\e[38;5;%dm",colorScheme->seen);
+	else ui_printf("\e[38;5;%dm", colorScheme->entries);
 	
-	if(i == selected_tab->sel){
+	if(is_selected){
 		setGlobalEntry(selected_tab->old_entry, entry_item);
 		ui_printf("\e[7m");
 	}
 
 	ui_printf("%.*s",len,entry_item->title);
-	ui_printf("\e[0K");
 	if(shorted) ui_printf("...");
 		
 	if(entry_item->downloaded) ui_printf(" 🌠");
 	if(entry_item->bookmarked) ui_printf(" ⭐");
 
+	if(is_selected) ui_printf("\e[27m");
+	ui_printf("\e[0K");
+
 	if(expanded_mode){
 		ui_printf("\e[7G"); // cursor pos 7 :: title
-		if(i == selected_tab->sel && shorted) ui_printf("\e[38;5;%d;7m%s \e[27m", colorScheme->entries, entry_item->title); 
-		ui_printf("\e[104G"); // cursor pos 104 :: url
+		if(is_selected && shorted) ui_printf("\e[38;5;%d;7m%s \e[27m", colorScheme->entries, entry_item->title); 
+		if(zebra_bg >= 0){
+			ui_printf("\e[107G");
+			ui_apply_bg();
+			ui_printf("\e[0K");
+		}
+		ui_printf("\e[108G"); // cursor pos 108 :: url
 		ui_printf("\e[27;38;5;%dm%c ",colorScheme->urlprefix,colorScheme->urlprefix_char);
-		if(i == selected_tab->sel) ui_printf("\e[4m"); // underline open
-		ui_printf("\e[38;5;%dm%.*s",colorScheme->url,maxUrl,entry_item->url);
-		if(i == selected_tab->sel) ui_printf("\e[24m"); // underline close
+		if(is_selected) ui_printf("\e[4m"); // underline open
+		ui_print_url(entry_item->url_nohttp ? entry_item->url_nohttp : entry_item->url, maxUrl);
+		if(is_selected) ui_printf("\e[24m"); // underline close
 	}else{
-		if(i == selected_tab->sel){
+		if(zebra_bg >= 0 && winSZ[0] > 1){
+			ui_printf("\e[%dG", winSZ[0]);
+			ui_apply_bg();
+			ui_printf("\e[0K");
+		}
+		if(is_selected){
 			ui_printf("\e[27;38;5;%dm", colorScheme->urlprefix);
 			newline();
 			ui_printf("\e[2K");
 			ui_printf(" | ");
-			ui_printf("\e[38;5;%dm%.*s",colorScheme->url,maxUrl,entry_item->url);
+			ui_print_url(entry_item->url_nohttp ? entry_item->url_nohttp : entry_item->url, maxUrl);
 		}
 	}
+	ui_reset_with_bg();
 	newline();
 	return 0;
 }
@@ -191,10 +267,11 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 int display_entries(short refresh){
 	if (selected_tab->tab_mode == TAB_WEBFEEDS){
 		int expanded_mode = winSZ[0]>displayThreshold;
-		int maxHeight = expanded_mode?winSZ[1]-13:winSZ[1]-4;
+		int maxHeight = expanded_mode?winSZ[1]-8:winSZ[1]-4;
 		int maxUrl = winSZ[0]/2 - 15; // Adjusted for wider alias column
 		
 		if (webfeeds_count == 0){
+			ui_reset_with_bg();
 			ui_printf("\n    (No webfeeds found)\e[0K\n");
 			return 0;
 		}
@@ -202,34 +279,45 @@ int display_entries(short refresh){
 		for(int i=0; i < maxHeight; i++){
 			int idx = selected_tab->line_offset + i;
 			if (idx >= webfeeds_count){
-				ui_printf("\e[0K\n");
+				ui_reset_with_bg();
+				ui_printf("\e[2K\n");
 				continue;
 			}
 			
-			ui_printf("\e[0K"); // Clear line start
+			int is_selected = (i == selected_tab->sel);
+			int zebra_bg = get_row_zebra_bg(i);
+			int zebra_dot = should_zebra_dot(i);
+			ui_reset_with_bg();
+			ui_printf("\e[2K ");
 			
 			// --- Alias (acts like Title: reversed when selected) ---
-			ui_printf("\e[0;38;5;%dm", colorScheme->entries);
-			if (i == selected_tab->sel) ui_printf("\e[7m");
+			if (zebra_bg >= 0) ui_printf("\e[48;5;%dm", zebra_bg);
+			if (zebra_dot) ui_printf("\e[38;5;%dm\u00B7", colorScheme->zebra_dot_color);
+			else ui_printf(" ");
+			ui_printf("\e[38;5;%dm", colorScheme->entries);
+			if (is_selected) ui_printf("\e[7m");
 			
 			int alias_len = strlen(webfeeds_list[idx].alias);
 			if (alias_len > 0){
-				ui_printf("  %-25.25s ", webfeeds_list[idx].alias);
+				ui_printf("%-25.25s", webfeeds_list[idx].alias);
 			} else {
-				ui_printf("  %-25.25s ", "");
+				ui_printf("%-25.25s", "");
 			}
 			
-			if (i == selected_tab->sel) ui_printf("\e[27m");
+			if (is_selected) ui_printf("\e[27m");
+			if (zebra_bg >= 0) ui_apply_bg();
+			ui_printf(" ");
 			
 			// --- Separator ---
 			ui_printf("\e[38;5;%dm", colorScheme->ui_walls);
 			ui_printf("\u2502 ");
 			
 			// --- URL (acts like URL: underlined when selected) ---
-			ui_printf("\e[38;5;%dm", colorScheme->url);
 			if (i == selected_tab->sel) ui_printf("\e[4m");
 			
-			ui_printf("%-*.*s ", maxUrl, maxUrl, webfeeds_list[idx].url);
+			int printed_url = ui_print_url(webfeeds_list[idx].url, maxUrl);
+			for (int pad = printed_url; pad < maxUrl; pad++) ui_printf(" ");
+			ui_printf(" ");
 			
 			if (i == selected_tab->sel) ui_printf("\e[24m");
 			
@@ -243,7 +331,7 @@ int display_entries(short refresh){
 				ui_printf("[%s] ", webfeeds_list[idx].groups[g]->name);
 			}
 			
-			ui_printf("\e[0m"); // Reset all formatting
+			ui_reset_with_bg(); // Reset formatting while preserving background
 			newline();
 		}
 		return 0;
@@ -251,16 +339,17 @@ int display_entries(short refresh){
 
 	global_e * huidig = selected_tab->working; 
 	if(setGlobalEntry(huidig, selected_tab->offset->entry)){
-		ui_printf("\n    (Empty feed)\e[0K\n");
+		ui_reset_with_bg();
+		ui_printf("\n    (Empty feed)\e[0K\e[J\n");
 		return 0;
 	}
 	huidig->group_member = selected_tab->offset->group_member;
 	
 	int expanded_mode = winSZ[0]>displayThreshold;
-	int maxHeight = expanded_mode?winSZ[1]-13:winSZ[1]-4; 
+	int maxHeight = expanded_mode?winSZ[1]-8:winSZ[1]-4; 
 
-	int maxUrl = expanded_mode?winSZ[0]-108:winSZ[0]-3;
-	int title_maxlen = expanded_mode?90:winSZ[0]-4;
+	int maxUrl = expanded_mode?winSZ[0]-112:winSZ[0]-3;
+	int title_maxlen = expanded_mode?94:winSZ[0]-4;
 	
 	int i;
 	for(i=0;i < maxHeight;i++){		
@@ -277,15 +366,17 @@ int display_entries(short refresh){
 		if(setGlobalEntry(huidig, getNextEntry(huidig, NEXT))) break;
 	}
 
+	ui_reset_with_bg();
 	if(expanded_mode){
-		ui_printf("\e[0;2;38;5;%dm", colorScheme->ui_walls);
+		ui_printf("\e[2;38;5;%dm", colorScheme->ui_walls);
 		ui_printf("\e[%dG\u2502\e[0K",5);
 		ui_printf("\n\e[%dG\u2514\u2500\e[0K",5);
 	}else{
 		int margin = winSZ[0]-10;
 		ui_printf("\e[%dG\e[2K",margin);
 	}
-	ui_printf("\e[38;5;%dm%d\\%d",colorScheme->entries_nav, (selected_tab->sel)+(selected_tab->line_offset),getEntriesNum()-1); 
+	ui_printf("\e[22;38;5;%dm%d\\%d\e[0K",colorScheme->entries_nav, (selected_tab->sel)+(selected_tab->line_offset),getEntriesNum()-1); 
+	ui_printf("\e[J");
 
 	return 0;
 }
@@ -308,8 +399,10 @@ void draw_tabs(){
 		}
 		ui_printf("    %s    ", tabs[len]->title);
 	}
-	ui_printf("\e[0m");
+	ui_reset_with_bg();
+	ui_printf("\e[0K");
 	newline();
+	ui_printf("\e[2K");
 	newline();
 }
 
@@ -320,25 +413,30 @@ void draw_statusbar(){
 	char * style = "\e[48;5;233m\e[38;5;188m";
 	
 	SetCursorLastLine();
+	ui_reset_with_bg();
 
 	if(statusbar_notify[0] != 0){
 		if(expanded_mode){
 			for(int i=0;i<space_sz;i++)ui_printf(" ");
 			ui_printf("%s%s", style, statusbar_notify);
 		}else{
-			ui_printf("\r%s%.50s...", style, statusbar_notify);
+			ui_printf("\r%s%.50s...\e[0K", style, statusbar_notify);
 		}
+	}else{
+		ui_printf("\e[2K");
 	}
 }
 
 void draw_cError(){
 	SetCursorLastLine();
-	if(cError[0]) ui_printf("\r\e[0;31m%s", cError);
+	ui_reset_with_bg();
+	if(cError[0]) ui_printf("\r\e[31m%s\e[0K", cError);
 	ui_flush();
 }
 
 void EmptyScreen(){
-	ui_printf("\e[0m\e[H\e[2J");
+	ui_reset_with_bg();
+	ui_printf("\e[H\e[2J");
 }
 
 void newline(){
@@ -346,16 +444,18 @@ void newline(){
 }
 
 void draw_command_line(){
+	ui_reset_with_bg();
 	ui_printf("\e[%d;0H", winSZ[1]);
 	ui_printf("\e[2K");
 
 	if(cHelper){
 		ui_printf("\r");
 		for(int i=0;i<cmd_count-1;i++) ui_printf(" ");
-		ui_printf("\e[0;2m%s", cHelper+cHelper_len);
+		ui_printf("\e[2m%s\e[22m", cHelper+cHelper_len);
 	}
 	
-	ui_printf("\r\e[0m");
+	ui_printf("\r");
+	ui_reset_with_bg();
 	ui_printf("%s", cmd_buffer);
 	ui_flush();
 }
@@ -367,7 +467,8 @@ void draw_update(short refresh){
 	}
 	
 	if(refresh == 0){
-		ui_printf("\e[0m\e[3;0H");
+		ui_reset_with_bg();
+		ui_printf("\e[3;0H");
 	}else{
 		EmptyScreen();
 		draw_tabs();
@@ -387,6 +488,7 @@ void SetCursorLastLine(){
 }
 
 void ClearLastLine(){
-	ui_printf("\e[0m\e[%d;0H\e[2K",winSZ[1]);
+	ui_reset_with_bg();
+	ui_printf("\e[%d;0H\e[2K",winSZ[1]);
 	ui_flush();
 }

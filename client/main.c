@@ -50,18 +50,22 @@ enum SpecialKey {
 	KEY_SPECIAL_PAGE_DOWN = 81
 };
 
+static void reset_terminal_colors(void){
+	printf("\e[0m\e[39;49m\e[H\e[2J\e[?1049l\e[0m\e[39;49m\e[?25h");
+	fflush(stdout);
+}
+
 #ifndef _WIN32
 static struct termios orig_termios;
 static int termios_saved = 0;
 
-/* Restore terminal attributes and cursor visibility on exit or signal. */
+/* Restore terminal attributes, colors, and cursor visibility on exit or signal. */
 static void restore_terminal(void){
 	if(termios_saved){
 		tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
 		termios_saved = 0;
 	}
-	printf("\e[0m\e[?25h");
-	fflush(stdout);
+	reset_terminal_colors();
 }
 
 static void handle_exit_signal(int sig){
@@ -268,6 +272,8 @@ int main(int argc, char * argv[]){
 	if (winSZ[0] > displayThreshold) display_mode = 0;
 	else display_mode = 1;
 	
+	printf("\e[?1049h\e[?25l");
+	fflush(stdout);
 	draw_update(true);
 
 	pthread_create(&tWinResize, NULL, &winResize_Loop, NULL);
@@ -300,7 +306,7 @@ int main(int argc, char * argv[]){
 				continue;
 			}
 
-			int pageSize = (display_mode == 0) ? (winSZ[1] - 13) : (winSZ[1] - 5);
+			int pageSize = (display_mode == 0) ? (winSZ[1] - 8) : (winSZ[1] - 5);
 			if(pageSize < 1) pageSize = 1;
 
 			if(scan_code == KEY_SPECIAL_PAGE_UP){ // Page Up
@@ -489,7 +495,9 @@ int main(int argc, char * argv[]){
 				printf("\e[?25h");
 				break;
 			case 'Q':
-				printf("\e[0m\e[?25h");
+#ifdef _WIN32
+				reset_terminal_colors();
+#endif
 				exit(0);
 		}
 		draw_update(redraw);

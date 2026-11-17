@@ -7,10 +7,16 @@ typedef struct colorscheme{
 	int entries;	
 	int urlprefix;
 	int url;
+	int url_path;
 	int seen;
 	int ui_walls;
 	int entries_nav;
 	int background;
+	int zebra_enabled;
+	int zebra_even_color;
+	int zebra_odd_color;
+	int zebra_dot_enabled;
+	int zebra_dot_color;
 	char urlprefix_char;
 } colorscheme;
 

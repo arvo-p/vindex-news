@@ -52,7 +52,7 @@ int list_selector_move(int step){
 		return 1; // Hit lower limit
 	
 	int isWindowLarge = winSZ[0]>displayThreshold;
-	int diff = isWindowLarge?(selected_tab->sel)+13+step-winSZ[1]:(selected_tab->sel)+step+5-winSZ[1];
+	int diff = isWindowLarge?(selected_tab->sel)+8+step-winSZ[1]:(selected_tab->sel)+step+5-winSZ[1];
 
 	if(step > 0 && diff>=0){
 		int actual_steps = 0;
