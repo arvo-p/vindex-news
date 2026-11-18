@@ -15,7 +15,7 @@ int setAppDefaultColorscheme(){
 	colorScheme->entries = 250;
 	colorScheme->url = 244;
 	colorScheme->url_path = 239;
-	colorScheme->seen = 239;
+	colorScheme->seen = 241;
 
 	colorScheme->ui_walls=138;
 	colorScheme->entries_nav=138;

@@ -192,6 +192,9 @@ int ui_count_rows_for_sel(global_e * start_pos, int target_sel){
 	int rows = 0;
 
 	for(int i = 0; i <= target_sel && iter.entry != NULL; i++){
+		if(iter.entry->is_separator){
+			rows++;
+		}
 		if(colorScheme->date_separators_enabled){
 			int bucket = get_date_bucket(iter.entry->published_at, now);
 			if(bucket > 0 && bucket > prev_bucket){
@@ -509,16 +512,13 @@ int the_entry_print(entry * entry_item, int expanded_mode, int maxUrl, int title
 
 	if(expanded_mode){
 		if(entry_item->bookmarked) ui_printf("\e[38;5;%dm\e[3G\u2691", colorScheme->bookmark_color);
-		ui_printf("\e[38;5;%dm\e[%dG%s", colorScheme->ui_walls, 5, entry_item->is_separator ? "\u251C" : "\u2502");
+		ui_printf("\e[38;5;%dm\e[%dG\u2502", colorScheme->ui_walls, 5);
 	} else {
 		if(entry_item->bookmarked) ui_printf("\e[38;5;%dm\u2691", colorScheme->bookmark_color);
-		else if(entry_item->is_separator) ui_printf("\e[38;5;%dm\u2500", colorScheme->ui_walls);
 		else ui_printf(" ");
 	}
 	if(zebra_bg >= 0) ui_printf("\e[48;5;%dm", zebra_bg);
-	if(entry_item->is_separator){
-		ui_printf("\u2500");
-	} else if(zebra_dot){
+	if(zebra_dot){
 		ui_printf("\e[38;5;%dm\u00B7", colorScheme->zebra_dot_color);
 	} else {
 		ui_printf(" ");
@@ -668,7 +668,12 @@ int display_entries(short refresh){
 	int prev_bucket = get_prev_entry_bucket(huidig, now);
 	int rows_used = 0;
 	int i;
-	for(i=0; rows_used < maxHeight; i++){		
+	for(i=0; rows_used < maxHeight; i++){
+		if(huidig->entry->is_separator){
+			if(rows_used + 1 >= maxHeight && i > selected_tab->sel) break;
+			ui_print_date_separator(expanded_mode, " --- New articles above --- ");
+			rows_used++;
+		}
 		if(colorScheme->date_separators_enabled){
 			int bucket = get_date_bucket(huidig->entry->published_at, now);
 			if(bucket > 0 && bucket > prev_bucket){
