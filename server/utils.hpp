@@ -16,5 +16,6 @@ int ParseAnyDatetime(std::string &date, struct tm * t);
 time_t TmToUtcTime(struct tm * t);
 int CompareDates(struct tm * d1, struct tm * d2);
 void DebugPrintDate(struct tm * t);
+std::string DecodeHtmlEntities(const std::string &input);
 
 #endif

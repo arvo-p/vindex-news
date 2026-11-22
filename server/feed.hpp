@@ -2,6 +2,7 @@
 #define FEED_HPP
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include <fstream>
 #include "globals.hpp"
@@ -43,8 +44,10 @@ class feed{
 		int SaveEntry(Entry &entry);
 		int Save();
 		int Close();
+		void LoadRecentLinks(size_t maxEntries = 50);
 
 		std::vector<Entry> entryList;
+		std::unordered_set<std::string> recentLinks;
 		int parsedEntriesCount = 0;
 };
 

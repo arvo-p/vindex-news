@@ -16,6 +16,7 @@ void ClearLastLine();
 void ui_flush();
 void get_terminal_size(int *cols, int *rows);
 int ui_count_rows_for_sel(global_e * start_pos, int target_sel);
+int url_has_ext(const char * url, const char * ext);
 int is_video_url(const char * url);
 int is_pdf_url(const char * url);
 void * winResize_Loop(void * arg);

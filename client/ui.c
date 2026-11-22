@@ -160,9 +160,9 @@ static int get_date_bucket(time_t published_at, time_t now){
 
 static const char * get_date_bucket_label(int bucket){
 	switch(bucket){
-		case 1: return " --- One Day ago --- ";
+		case 1: return " --- One day ago --- ";
 		case 2: return " --- One week ago --- ";
-		case 3: return " --- One Month Ago --- ";
+		case 3: return " --- One month ago --- ";
 		case 4: return " --- One year ago --- ";
 		case 5: return " --- Two years ago --- ";
 		case 6: return " --- Five years ago --- ";
@@ -431,7 +431,7 @@ static int find_title_prefix_len(const char * title){
 	return 0;
 }
 
-static int url_has_ext(const char * url, const char * ext){
+int url_has_ext(const char * url, const char * ext){
 	if(!url || !ext) return 0;
 	size_t ext_len = strlen(ext);
 	size_t path_len = strcspn(url, "?#");
@@ -671,7 +671,7 @@ int display_entries(short refresh){
 	for(i=0; rows_used < maxHeight; i++){
 		if(huidig->entry->is_separator){
 			if(rows_used + 1 >= maxHeight && i > selected_tab->sel) break;
-			ui_print_date_separator(expanded_mode, " --- New articles above --- ");
+			ui_print_date_separator(expanded_mode, " --- Caught up to here --- ");
 			rows_used++;
 		}
 		if(colorScheme->date_separators_enabled){

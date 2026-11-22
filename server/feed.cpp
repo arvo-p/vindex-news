@@ -4,6 +4,7 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <deque>
 #include <iostream>
 #include <curl/curl.h>
 #include <cstring>
@@ -12,10 +13,39 @@
 using namespace std;
 
 feed::feed(){
+	LoadRecentLinks(50);
 	newsOutputStream.open(pathManager->entriesFilePath, std::ios_base::app);
 	if(!newsOutputStream.is_open()){
 		cout << "Could not open " << pathManager->entriesFilePath << endl;
 		exit(1);
+	}
+}
+
+void feed::LoadRecentLinks(size_t maxEntries){
+	recentLinks.clear();
+	ifstream f(pathManager->entriesFilePath);
+	if(!f.is_open()) return;
+
+	std::deque<string> tail;
+	string line;
+	while(getline(f, line)){
+		while(!line.empty() && line.back() == '\r') line.pop_back();
+		if(line.empty()) continue;
+		tail.push_back(line);
+		if(tail.size() > maxEntries) tail.pop_front();
+	}
+
+	const char unit_separator = 31;
+	for(const string &entryLine : tail){
+		size_t sep1 = entryLine.find(unit_separator);
+		if(sep1 == string::npos) continue;
+		size_t sep2 = entryLine.find(unit_separator, sep1 + 1);
+		if(sep2 == string::npos) continue;
+		size_t sep3 = entryLine.find(unit_separator, sep2 + 1);
+		string link = (sep3 == string::npos)
+			? entryLine.substr(sep2 + 1)
+			: entryLine.substr(sep2 + 1, sep3 - sep2 - 1);
+		if(!link.empty()) recentLinks.insert(link);
 	}
 }
 
@@ -52,9 +82,13 @@ int feed::SaveEntry(Entry &entry){
 }
 
 int feed::RecordEntry(string &entry_title, string &entry_link, rss_url &rssUrl, string &date_str){
+	if(!entry_link.empty() && recentLinks.find(entry_link) != recentLinks.end()){
+		return 1;
+	}
+
 	Entry entry;
 	entry.id = GenerateNewId();
-	entry.title = entry_title;
+	entry.title = DecodeHtmlEntities(entry_title);
 	entry.link = entry_link;
 	entry.rssUrl = rssUrl;
 	
@@ -67,6 +101,7 @@ int feed::RecordEntry(string &entry_title, string &entry_link, rss_url &rssUrl, 
 		entry.timestamp = 0;
 	}
 
+	if(!entry_link.empty()) recentLinks.insert(entry_link);
 	entryList.push_back(entry);
 	return 0;
 }
@@ -276,10 +311,11 @@ int feed::ParseRss(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		bool isEntryNew = feed::VerifyEntryDate(rssUrl.url,pubdate_str);
 
 		if(!blacklisted && isEntryNew){
-			rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str);
-			countNewEntries++;
-			feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
-			rssManager->parsedEntriesCount++;
+			if(rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str) == 0){
+				countNewEntries++;
+				feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
+				rssManager->parsedEntriesCount++;
+			}
 		}
 		item = item->next_sibling("item");
 	}
@@ -338,10 +374,11 @@ int feed::ParseRdf(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		bool isEntryNew = feed::VerifyEntryDate(rssUrl.url,pubdate_str);
 
 		if(!blacklisted && isEntryNew){
-			rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str);
-			countNewEntries++;
-			feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
-			rssManager->parsedEntriesCount++;
+			if(rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str) == 0){
+				countNewEntries++;
+				feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
+				rssManager->parsedEntriesCount++;
+			}
 		}
 		item = item->next_sibling("item");
 	}
@@ -386,8 +423,8 @@ int feed::ParseAtom(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		title_node = item->first_node("title");
 		link_node = item->first_node("link");
 
-		pdate_node = item->first_node("updated");
-		if(!pdate_node) pdate_node = item->first_node("published");
+		pdate_node = item->first_node("published");
+		if(!pdate_node) pdate_node = item->first_node("updated");
 
 		rapidxml::xml_attribute<> *href_attr = link_node ? link_node->first_attribute("href") : NULL;
 		if(!title_node || !href_attr || !pdate_node){
@@ -414,10 +451,11 @@ int feed::ParseAtom(rss_url &rssUrl, rapidxml::xml_node<> *node){
 		bool isEntryNew = feed::VerifyEntryDate(rssUrl.url,pubdate_str);
 
 		if(!blacklisted && isEntryNew){
-			rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str);
-			countNewEntries++;
-			feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
-			rssManager->parsedEntriesCount++;
+			if(rssManager->RecordEntry(title_str, link_str, rssUrl, pubdate_str) == 0){
+				countNewEntries++;
+				feed::ParsePrintStatus(rssUrl, IN_PROGRESS, countNewEntries);
+				rssManager->parsedEntriesCount++;
+			}
 		}
 		item = item->next_sibling("entry");
 		//DebugPrintDate(&itemDatetime);

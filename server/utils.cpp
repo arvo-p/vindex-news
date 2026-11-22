@@ -250,3 +250,109 @@ int CompareDates(struct tm * d1, struct tm * d2){
 	if(d1->tm_sec<d2->tm_sec) return 2;
 	return 0;
 }
+
+static void AppendUtf8Codepoint(string &out, unsigned long cp){
+	if(cp == 0 || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return;
+	if(cp == '\n' || cp == '\r' || cp == 31 || cp == 0xA0){
+		out.push_back(' ');
+		return;
+	}
+	if(cp < 0x80){
+		out.push_back(static_cast<char>(cp));
+	}else if(cp < 0x800){
+		out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+		out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+	}else if(cp < 0x10000){
+		out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+		out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+		out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+	}else{
+		out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+		out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+		out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+		out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+	}
+}
+
+/* Decode XML/HTML named and numeric entities (e.g. &amp;, &#8217;, &#x27;) into UTF-8. */
+string DecodeHtmlEntities(const string &input){
+	struct HtmlEntity { const char *name; const char *utf8; };
+	static const HtmlEntity kEntities[] = {
+		{"amp", "&"}, {"lt", "<"}, {"gt", ">"}, {"quot", "\""}, {"apos", "'"},
+		{"nbsp", " "}, {"ensp", " "}, {"emsp", " "}, {"thinsp", " "},
+		{"lsquo", "\xE2\x80\x98"}, {"rsquo", "\xE2\x80\x99"}, {"sbquo", "\xE2\x80\x9A"},
+		{"ldquo", "\xE2\x80\x9C"}, {"rdquo", "\xE2\x80\x9D"}, {"bdquo", "\xE2\x80\x9E"},
+		{"laquo", "\xC2\xAB"}, {"raquo", "\xC2\xBB"},
+		{"lsaquo", "\xE2\x80\xB9"}, {"rsaquo", "\xE2\x80\xBA"},
+		{"prime", "\xE2\x80\xB2"}, {"Prime", "\xE2\x80\xB3"},
+		{"ndash", "\xE2\x80\x93"}, {"mdash", "\xE2\x80\x94"}, {"minus", "\xE2\x88\x92"},
+		{"hellip", "\xE2\x80\xA6"}, {"bull", "\xE2\x80\xA2"}, {"middot", "\xC2\xB7"},
+		{"copy", "\xC2\xA9"}, {"reg", "\xC2\xAE"}, {"trade", "\xE2\x84\xA2"},
+		{"deg", "\xC2\xB0"}, {"plusmn", "\xC2\xB1"}, {"times", "\xC3\x97"}, {"divide", "\xC3\xB7"},
+		{"euro", "\xE2\x82\xAC"}, {"pound", "\xC2\xA3"}, {"yen", "\xC2\xA5"}, {"cent", "\xC2\xA2"},
+		{"sect", "\xC2\xA7"}, {"para", "\xC2\xB6"},
+		{"rarr", "\xE2\x86\x92"}, {"larr", "\xE2\x86\x90"}, {"uarr", "\xE2\x86\x91"},
+		{"darr", "\xE2\x86\x93"}, {"harr", "\xE2\x86\x94"},
+		{"aacute", "\xC3\xA1"}, {"eacute", "\xC3\xA9"}, {"iacute", "\xC3\xAD"},
+		{"oacute", "\xC3\xB3"}, {"uacute", "\xC3\xBA"}, {"agrave", "\xC3\xA0"},
+		{"egrave", "\xC3\xA8"}, {"auml", "\xC3\xA4"}, {"ouml", "\xC3\xB6"},
+		{"uuml", "\xC3\xBC"}, {"ntilde", "\xC3\xB1"}, {"ccedil", "\xC3\xA7"},
+		{"szlig", "\xC3\x9F"}, {"Aacute", "\xC3\x81"}, {"Eacute", "\xC3\x89"},
+		{"Auml", "\xC3\x84"}, {"Ouml", "\xC3\x96"}, {"Uuml", "\xC3\x9C"}
+	};
+
+	string out;
+	out.reserve(input.size());
+
+	for(size_t i = 0; i < input.size(); ){
+		if(input[i] != '&'){
+			out.push_back(input[i++]);
+			continue;
+		}
+		size_t semi = input.find(';', i + 1);
+		if(semi == string::npos || semi - i > 12 || semi == i + 1){
+			out.push_back(input[i++]);
+			continue;
+		}
+
+		string ent = input.substr(i + 1, semi - i - 1);
+		bool decoded = false;
+
+		if(ent[0] == '#'){
+			unsigned long cp = 0;
+			bool valid_num = false;
+			if(ent.size() >= 3 && (ent[1] == 'x' || ent[1] == 'X')){
+				valid_num = true;
+				for(size_t k = 2; k < ent.size(); k++){
+					if(!std::isxdigit(static_cast<unsigned char>(ent[k]))){ valid_num = false; break; }
+				}
+				if(valid_num) cp = std::strtoul(ent.c_str() + 2, nullptr, 16);
+			}else if(ent.size() >= 2){
+				valid_num = true;
+				for(size_t k = 1; k < ent.size(); k++){
+					if(!std::isdigit(static_cast<unsigned char>(ent[k]))){ valid_num = false; break; }
+				}
+				if(valid_num) cp = std::strtoul(ent.c_str() + 1, nullptr, 10);
+			}
+			if(valid_num && cp > 0 && cp <= 0x10FFFF && !(cp >= 0xD800 && cp <= 0xDFFF)){
+				AppendUtf8Codepoint(out, cp);
+				decoded = true;
+			}
+		}else{
+			for(const auto &e : kEntities){
+				if(ent == e.name){
+					out += e.utf8;
+					decoded = true;
+					break;
+				}
+			}
+		}
+
+		if(decoded){
+			i = semi + 1;
+		}else{
+			out.push_back(input[i++]);
+		}
+	}
+	return out;
+}

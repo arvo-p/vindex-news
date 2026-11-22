@@ -23,7 +23,7 @@
 #include "headers/main.h"
 #include "headers/ui.h"
 
-char *pth_gConf, *pth_folder_colorscheme, *pth_Root, * pth_EntriesInfo, * pth_EntriesInfoMod, * pth_mainNews, * pth_Archive, *pth_Webfeeds, *pth_Highlighted;
+char *pth_gConf, *pth_folder_colorscheme, *pth_Root, * pth_EntriesInfo, * pth_EntriesInfoMod, * pth_mainNews, * pth_Archive, *pth_Webfeeds, *pth_Highlighted, *pth_Openers;
 
 int LOAD_GetEntries(enum LoadEntriesMode mode);
 int LOAD_GetInteractionInformation();
@@ -36,6 +36,7 @@ int LOAD_ModifyWebfeeds(const char * target_url, const char * old_groupname, con
 int LOAD_GetWebfeedsList();
 int LOAD_GetHighlightedWords();
 int LOAD_ModifyHighlighted(const char * word, short action);
+int LOAD_GetOpeners();
 
 short homepageExcludedGroups[32];
 
@@ -44,6 +45,9 @@ int webfeeds_count = 0;
 
 char highlighted_words[128][64];
 int highlighted_words_count = 0;
+
+opener_rule openers_list[64];
+int openers_count = 0;
 
 int LOAD_INIT(struct PublicLoad * this){
 	int error = 0;
@@ -54,6 +58,7 @@ int LOAD_INIT(struct PublicLoad * this){
 	error += LOAD_GetEntries(NO_OFFSET) << 2;
 	error += LOAD_GetInteractionInformation() << 4;	
 	LOAD_GetHighlightedWords();
+	LOAD_GetOpeners();
 
 	if(error != 0){
 		printf("LOAD_INIT ERROR %d", error);
@@ -72,6 +77,7 @@ int LOAD_INIT(struct PublicLoad * this){
 int LOAD_ReloadEntries(){
 	LOAD_GetEntries(OFFSET_LAST_ENTRY);
 	LOAD_GetHighlightedWords();
+	LOAD_GetOpeners();
 	if(selected_tab->tab_mode == TAB_SIMPLE) setGlobalEntry(selected_tab->offset, initial_entry);
 	else if(selected_tab->tab_mode == TAB_GROUP && selected_tab->category && selected_tab->category->first_member){
 		selected_tab->offset->group_member = selected_tab->category->first_member;
@@ -157,6 +163,7 @@ int LOAD_GetFilepaths(){
 	pth_gConf = pathAppend(pth_Root, file_gConf);
 	pth_Webfeeds = pathAppend(pth_Root, "webfeeds.conf");
 	pth_Highlighted = pathAppend(pth_Root, "highlighted.conf");
+	pth_Openers = pathAppend(pth_Root, "openers.conf");
 	pth_Archive = pathAppend(pth_Root, folder_archive);
 	pth_folder_colorscheme = pathAppend(pth_Root, folder_colorscheme);
 
@@ -275,6 +282,61 @@ int LOAD_ModifyHighlighted(const char * word, short action){
 	}
 
 	return 1;
+}
+
+static void trim_inplace(char * s){
+	size_t len = strlen(s);
+	while(len > 0 && (s[len-1] == '\n' || s[len-1] == '\r' || s[len-1] == ' ' || s[len-1] == '\t')){
+		s[--len] = '\0';
+	}
+	char * start = s;
+	while(*start == ' ' || *start == '\t') start++;
+	if(start != s) memmove(s, start, strlen(start) + 1);
+}
+
+int LOAD_GetOpeners(){
+	openers_count = 0;
+	FILE *fin = fopen(pth_Openers, "rb");
+	if(!fin){
+		fin = fopen(pth_Openers, "wb");
+		if(fin){
+			fprintf(fin,
+				"# Application openers by link type (video, pdf, .ext, domain, or default)\n"
+				"# Linux (program name or path):\n"
+				"#   video = mpv --force-window=immediate --osd-level=1\n"
+				"#   pdf = zathura\n"
+				"#   default = xdg-open\n"
+				"#\n"
+				"# Windows (full path to executable):\n"
+				"#   video = C:\\Program Files\\mpv\\mpv.exe --force-window=immediate --osd-level=1\n"
+				"#   pdf = C:\\Program Files\\SumatraPDF\\SumatraPDF.exe\n"
+				"#   default = C:\\Program Files\\Mozilla Firefox\\firefox.exe\n");
+			fclose(fin);
+		}
+		return 0;
+	}
+
+	char line[640];
+	while(fgets(line, sizeof(line), fin) && openers_count < 64){
+		trim_inplace(line);
+		if(line[0] == '\0' || line[0] == '#') continue;
+
+		char * eq = strchr(line, '=');
+		if(!eq) continue;
+		*eq = '\0';
+
+		char * key = line;
+		char * val = eq + 1;
+		trim_inplace(key);
+		trim_inplace(val);
+		if(key[0] == '\0' || val[0] == '\0') continue;
+
+		snprintf(openers_list[openers_count].type, sizeof(openers_list[0].type), "%.63s", key);
+		snprintf(openers_list[openers_count].app, sizeof(openers_list[0].app), "%.511s", val);
+		openers_count++;
+	}
+	fclose(fin);
+	return 0;
 }
 
 int LOAD_GetWebfeedsList(){
@@ -547,10 +609,7 @@ int LOAD_GetEntry(char * line, entry * new_entry, entry ** previous_entry, int *
 	new_entry->child_el = (void *)new_child;
 
 	// Retrieve title
-	szT = strlen(args[1]);
-	if(szT > 320) szT = 320; 
-	strncpy(new_entry->title, args[1], szT);
-	new_entry->title[szT] = 0;
+	snprintf(new_entry->title, sizeof(new_entry->title), "%s", args[1]);
 
 	// Retrieve groups
 	
@@ -698,8 +757,11 @@ int LOAD_GetEntries(enum LoadEntriesMode mode){
 	}
 
 	if(i > 0 && entry_block) entry_block->start_index = 95-((i-1)%96);
+	static entry * last_separator_entry = NULL;
 	if(mode == OFFSET_LAST_ENTRY && i > 0 && initial_entry != NULL) {
+		if(last_separator_entry) last_separator_entry->is_separator = 0;
 		initial_entry->is_separator = 1;
+		last_separator_entry = initial_entry;
 	}
 	initial_entry = previous_entry;	
 

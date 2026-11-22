@@ -14,6 +14,14 @@ extern int webfeeds_count;
 extern char highlighted_words[128][64];
 extern int highlighted_words_count;
 
+typedef struct {
+	char type[64];
+	char app[512];
+} opener_rule;
+
+extern opener_rule openers_list[64];
+extern int openers_count;
+
 typedef struct PublicLoad{
  	int (* ReloadEntries)();
 	int (* UpdateInteractionInformation)(struct entry * target);

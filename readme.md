@@ -100,7 +100,26 @@ kernel
 RISC-V
 ```
 
-### 4. Colorscheme (`colorschemes/latenight`)
+### 4. Custom Application Openers (`openers.conf`)
+Configure which application opens each link type in `<data_dir>/openers.conf` (reloaded on startup and on `r`). Supported keys are `video` (YouTube, Odysee, `.mp4`, `.webm`, `.mkv`), `pdf` (`.pdf`), custom file extensions (`.ext`), domain substrings, and `default`.
+
+- **Linux** (program name or path, plus optional arguments):
+```ini
+video = mpv --force-window=immediate --osd-level=1
+pdf = zathura
+default = firefox
+```
+
+- **Windows** (full path to the executable, plus optional arguments):
+```ini
+video = C:\Program Files\mpv\mpv.exe --force-window=immediate --osd-level=1
+pdf = C:\Program Files\SumatraPDF\SumatraPDF.exe
+default = C:\Program Files\Mozilla Firefox\firefox.exe
+```
+
+If a link type is not configured, `vindex` falls back to `mpv` for video links and `xdg-open` (Linux) or `start` (Windows) for other links.
+
+### 5. Colorscheme (`colorschemes/latenight`)
 Customize colors and display options in `<data_dir>/colorschemes/latenight` (e.g., `~/.local/share/vindex/colorschemes/latenight` on Linux or `%APPDATA%\vindex\colorschemes\latenight` on Windows). Integer color values use xterm-256 palette indices (`0`–`255`), and background colors accept `-1` for the terminal's default/transparent background:
 
 | Option | Type | Default | Description |
@@ -163,7 +182,7 @@ ui.date_separators.enabled=1
 ui.date_separators.color=138
 ```
 
-### 5. Fetching Feeds
+### 6. Fetching Feeds
 Run the parser executable to fetch the newest articles:
 ```sh
 ./server/vindexServer   # or vindexServer.exe on Windows
@@ -171,7 +190,7 @@ Run the parser executable to fetch the newest articles:
 This will parse the feeds, check them against the blacklist, sort them by publication date, and append them to `entries.dat`.
 *To test a local feed configuration file:* `vindexServer test example.atom`.
 
-### 6. Launching the Reader
+### 7. Launching the Reader
 Run `vindex` (or `vindex.exe`) to open the terminal reader:
 ```sh
 ./client/vindex         # or vindex.exe on Windows

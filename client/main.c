@@ -12,11 +12,14 @@
 #include <shellapi.h>
 #include <direct.h>
 #include <io.h>
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 #else
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
+#include <strings.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/select.h>
@@ -580,18 +583,99 @@ int main(int argc, char * argv[]){
 	return 0;
 }
 
+static const char * find_opener_for_url(const char * url){
+	const char * default_app = NULL;
+	for(int i = 0; i < openers_count; i++){
+		const char * t = openers_list[i].type;
+		if(strcasecmp(t, "default") == 0){
+			if(!default_app) default_app = openers_list[i].app;
+			continue;
+		}
+		if(strcasecmp(t, "video") == 0){
+			if(is_video_url(url)) return openers_list[i].app;
+		}else if(strcasecmp(t, "pdf") == 0){
+			if(is_pdf_url(url)) return openers_list[i].app;
+		}else if(t[0] == '.'){
+			if(url_has_ext(url, t)) return openers_list[i].app;
+		}else{
+			if(contains_icase(url, t)) return openers_list[i].app;
+		}
+	}
+	return default_app;
+}
+
+#ifndef _WIN32
+static void exec_configured_app(const char * app_cmd, const char * url){
+	char buf[512];
+	snprintf(buf, sizeof(buf), "%s", app_cmd);
+
+	char * argv[32];
+	int argc = 0;
+	char * p = buf;
+	while(*p && argc < 30){
+		while(*p == ' ' || *p == '\t') p++;
+		if(*p == '\0') break;
+		if(*p == '"' || *p == '\''){
+			char quote = *p++;
+			argv[argc++] = p;
+			while(*p && *p != quote) p++;
+			if(*p == quote) *p++ = '\0';
+		}else{
+			argv[argc++] = p;
+			while(*p && *p != ' ' && *p != '\t') p++;
+			if(*p) *p++ = '\0';
+		}
+	}
+	if(argc == 0) _exit(127);
+	argv[argc++] = (char *)url;
+	argv[argc] = NULL;
+	execvp(argv[0], argv);
+	_exit(127);
+}
+#else
+static void build_windows_opener_cmd(const char * app_cmd, const char * url, char * out, size_t out_sz){
+	if(app_cmd[0] == '"'){
+		snprintf(out, out_sz, "%s \"%s\"", app_cmd, url);
+		return;
+	}
+	const char * exe_pos = NULL;
+	size_t len = strlen(app_cmd);
+	for(size_t i = 0; i + 4 <= len; i++){
+		if(strncasecmp(app_cmd + i, ".exe", 4) == 0 &&
+		   (app_cmd[i + 4] == '\0' || app_cmd[i + 4] == ' ' || app_cmd[i + 4] == '\t')){
+			exe_pos = app_cmd + i + 4;
+			break;
+		}
+	}
+	if(exe_pos){
+		int path_len = (int)(exe_pos - app_cmd);
+		snprintf(out, out_sz, "\"%.*s\"%s \"%s\"", path_len, app_cmd, exe_pos, url);
+		return;
+	}
+	if(strchr(app_cmd, ' ') != NULL && GetFileAttributesA(app_cmd) != INVALID_FILE_ATTRIBUTES){
+		snprintf(out, out_sz, "\"%s\" \"%s\"", app_cmd, url);
+		return;
+	}
+	snprintf(out, out_sz, "%s \"%s\"", app_cmd, url);
+}
+#endif
+
 int entry_view(entry * entry){
 	if(!entry) return 0;
 
 	char * url = entry->url;
 	entry->seen = 1;
 	int is_video = is_video_url(url);
+	const char * custom_app = find_opener_for_url(url);
 
 #ifdef _WIN32
 	char cmd[1024];
 	DWORD creationFlags = DETACHED_PROCESS;
 
-	if(is_video){
+	if(custom_app){
+		build_windows_opener_cmd(custom_app, url, cmd, sizeof(cmd));
+		creationFlags = DETACHED_PROCESS;
+	}else if(is_video){
 		snprintf(cmd, sizeof(cmd), "cmd.exe /c mpv --force-window=immediate  --osd-level=1 \"%s\"", url);
 		creationFlags = CREATE_NEW_CONSOLE;
 	}else{
@@ -620,7 +704,9 @@ int entry_view(entry * entry){
 				if(devnull > STDERR_FILENO) close(devnull);
 			}
 			setsid();
-			if(is_video){
+			if(custom_app){
+				exec_configured_app(custom_app, url);
+			}else if(is_video){
 				execlp("mpv", "mpv", "--force-window=immediate", "--osd-level=1", url, (char *)NULL);
 			}else{
 				execlp("xdg-open", "xdg-open", url, (char *)NULL);
